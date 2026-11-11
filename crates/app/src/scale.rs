@@ -364,9 +364,13 @@ pub fn pane<R>(
 /// from the other direction, which can make that one needed too.
 fn bars(content: Vec2, view: Vec2) -> (bool, bool) {
     use crate::scrollbar::THICK;
-    let mut v = content.y > view.y + 0.5;
-    let h = content.x > view.x - if v { THICK } else { 0.0 } + 0.5;
-    v = v || (h && content.y > view.y - THICK + 0.5);
+    // Under a whole pixel is the window's client rounded down at the interface size (520 points
+    // at 125 % is 650 px, and the client came back 649), not content left out: both bars showed
+    // over a window whose content was wholly visible (#672).
+    let over = |content: f32, view: f32| content > view + 1.0;
+    let mut v = over(content.y, view.y);
+    let h = over(content.x, view.x - if v { THICK } else { 0.0 });
+    v = v || (h && over(content.y, view.y - THICK));
     (v, h)
 }
 
@@ -521,5 +525,27 @@ mod tests {
         let right = Rect::from_min_max(pos2(420.0, 10.0), pos2(480.0, 31.0));
         assert_eq!(into_view(right, port, false), vec2(84.0, 0.0));
         assert_eq!(into_view(right, port, true), vec2(-84.0, 0.0));
+    }
+
+    /// #672: a client one pixel short of the content is the window's size rounded down at the
+    /// interface size, not a line of the content left out; the old half-pixel allowance put both
+    /// bars up here.
+    #[test]
+    fn a_pixel_rounded_off_needs_no_bar() {
+        assert_eq!(bars(vec2(650.0, 500.0), vec2(649.0, 500.0)), (false, false));
+        assert_eq!(bars(vec2(650.0, 500.0), vec2(650.0, 499.0)), (false, false));
+    }
+
+    /// Content two pixels over is content to scroll to, and the bar it puts up takes room from the
+    /// other direction, as Win32's do.
+    #[test]
+    fn content_left_out_needs_its_bar() {
+        // Two pixels wider, well short of the height: the horizontal bar only.
+        assert_eq!(bars(vec2(651.0, 480.0), vec2(649.0, 500.0)), (false, true));
+        // Two pixels taller, 20 narrower than the view: the vertical bar only.
+        assert_eq!(bars(vec2(630.0, 502.0), vec2(650.0, 500.0)), (true, false));
+        // Filling the width and two pixels wider: the horizontal bar's 17 px also leave it too
+        // tall, so both, as Win32 decides them.
+        assert_eq!(bars(vec2(651.0, 500.0), vec2(649.0, 500.0)), (true, true));
     }
 }
