@@ -1089,13 +1089,25 @@ async function hover(session, v) {
   return null;
 }
 
+// Where the button's main part is (its .go, read through its closed shadow root: at its left
+// end, at its right end in a right-to-left language); its left end when it can't be read.
+const GO_AT = `function () {
+  const g = this.querySelector(".go");
+  const r = g && g.getBoundingClientRect();
+  return JSON.stringify(r ? { x: r.left + Math.min(14, r.width / 2), w: r.width } : null);
+}`;
+const mainPart = async (session, b) => {
+  const go = session.pill ? await session.pill(GO_AT).catch(() => null) : null;
+  return go && go.w ? go.x : b.l + 14;
+};
+
 // Click the button's main part: the app's Download video window opens; the address it shows.
 // `shot`: a picture of that window first (PrintWindow: off the screens too), for a PR's body.
 async function clickButton(session, b, shot = "") {
   const pid = appPid();
   appWindows(pid, VIDEO_WINDOW);
   await until("the Download video window closed", 5000, () => !appWindows(pid).includes(VIDEO_WINDOW));
-  await session.mouse(b.l + 14, (b.t + b.b) / 2, "click");
+  await session.mouse(await mainPart(session, b), (b.t + b.b) / 2, "click");
   await until("the Download video window", 15000, () => appWindows(pid).includes(VIDEO_WINDOW));
   const address = await until("the Download video window's address", 10000, () => videoAddress(pid));
   if (shot) {
@@ -1189,7 +1201,12 @@ async function buttonOver(session, v) {
   for (let i = 0; i < 40; i++) {
     await session.mouse((v.l + v.r) / 2 + (i % 2), (v.t + v.b) / 2);
     const b = await rect(session, "mdm-video-button");
-    if (b && b.t >= v.t - 1 && b.b <= v.b + 1 && b.l >= v.l - 1 && b.r <= v.r + 1) return b;
+    if (b && b.t >= v.t - 1 && b.b <= v.b + 1 && b.l >= v.l - 1 && b.r <= v.r + 1) {
+      // Settled there (it fades in and follows the video).
+      await sleep(400);
+      const again = await rect(session, "mdm-video-button");
+      if (again && Math.abs(again.l - b.l) < 2 && Math.abs(again.t - b.t) < 2) return again;
+    }
     await sleep(200);
   }
   return null;
@@ -1211,15 +1228,19 @@ async function feedVideos(t) {
       return { f, html, page: /<meta name="mdm-page" content="([^"]+)"/.exec(html)[1].replaceAll("&amp;", "&") };
     });
   const css = fs.readFileSync(path.join(FEEDS, "feeds.css"), "utf8");
-  await s.serve([...new Set(pages.map((p) => new URL(p.page).hostname))], (url) => {
+  // media.example.test: a video's own plain file (social.html), never fetched from a network
+  // either (another download manager there would take it).
+  await s.serve([...new Set(pages.map((p) => new URL(p.page).hostname)), "media.example.test"], (url) => {
     const u = new URL(url);
     if (u.pathname.endsWith("/feeds.css")) return { status: 200, type: "text/css", body: css };
+    if (u.hostname === "media.example.test") return { status: 200, type: "video/mp4", body: "" };
     const p = pages.find((x) => new URL(x.page).host === u.host && new URL(x.page).pathname === u.pathname);
     return p ? { status: 200, type: "text/html; charset=utf-8", body: p.html } : { status: 404, type: "text/plain", body: "not a sample page" };
   });
   const pid = appPid();
   const openPost = OPEN_POST(t);
   const done = [];
+  let again = 0;
   // E2E_FEEDS_SHOT: a folder for a PR's pictures, from the LinkedIn sample: the app's window for
   // its first video, the button's answer for one nothing names.
   const shots = process.env.E2E_FEEDS_SHOT || "";
@@ -1238,15 +1259,40 @@ async function feedVideos(t) {
         return e === "page" ? location.href : e === "none" ? (/^https?:/.test(v.currentSrc) ? v.currentSrc : null) : e.replaceAll("{origin}", location.origin); })()`);
       await sleep(150);
       const v = await s.evaluate(`(() => { const r = ${VIDEOS}[${i}].getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom }; })()`);
-      const b = await buttonOver(s, v);
+      let b = await buttonOver(s, v);
       if (!b) throw new Error(`${f}: no button over video ${i + 1}`);
       if (want) {
-        const got = await clickButton(s, b, shot(f, i, "window"));
+        // What the button says meanwhile, for the report when no window opens.
+        // A click the button never took (it said nothing: headless Firefox now and then drops
+        // one) is made once more, and counted; one it answered without a window fails.
+        let got = "";
+        for (let attempt = 0; !got; attempt++) {
+          const said = new Set();
+          const end = Date.now() + 5000;
+          const watching = (async () => {
+            while (Date.now() < end) {
+              const l = await s.pill(PILL_LABEL).catch(() => null);
+              if (l) said.add(l.text);
+              await sleep(100);
+            }
+          })();
+          got = await clickButton(s, b, shot(f, i, "window")).catch(async (e) => {
+            await watching;
+            if (attempt === 0 && said.size <= 1) return "";
+            throw new Error(`${f}: video ${i + 1} (${want}): ${e.message} (the button said: ${[...said].join(" | ")})`);
+          });
+          if (!got) {
+            again += 1;
+            await s.mouse(2, 2);
+            b = await buttonOver(s, v);
+            if (!b) throw new Error(`${f}: no button over video ${i + 1} again`);
+          }
+        }
         if (got !== want) throw new Error(`${f}: video ${i + 1} sent ${got}, not ${want}`);
-        /^https?:\/\/127\.0\.0\.1/.test(got) ? (files += 1) : (posts += 1);
+        /^http:\/\/media\.example\.test\//.test(got) ? (files += 1) : (posts += 1);
       } else {
         appWindows(pid, VIDEO_WINDOW);
-        await s.mouse(b.l + 14, (b.t + b.b) / 2, "click");
+        await s.mouse(await mainPart(s, b), (b.t + b.b) / 2, "click");
         const said = await until(`${f}: video ${i + 1}'s answer on the button`, 10000, async () => {
           const l = await s.pill(PILL_LABEL);
           return l && l.err ? l.text : "";
@@ -1256,12 +1302,14 @@ async function feedVideos(t) {
         await sleep(1000);
         if (appWindows(pid).includes(VIDEO_WINDOW)) throw new Error(`${f}: video ${i + 1} opened the video window`);
         told += 1;
+        // Its answer shown to the end (video.js flash), as a person would see it.
+        await sleep(1500);
       }
       await s.mouse(2, 2);
     }
     done.push(`${f.replace(/\.html$/, "")} ${[posts && `${posts} named`, files && `${files} file`, told && `${told} told`].filter(Boolean).join("/")}`);
   }
-  return `each video's own address, its file, or "${openPost}": ${done.join(", ")}`;
+  return `each video's own address, its file, or "${openPost}": ${done.join(", ")}${again ? ` (${again} click(s) the button never took, made again)` : ""}`;
 }
 
 // How long the page and the extension keep the app's "may it show here" (video.js ASK_MS,
