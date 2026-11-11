@@ -539,6 +539,10 @@ These ship in a later version, when they're ready.
 
 ### Being built
 
+- 🔄 A freeze of the window while torrents ran on a busy or slow disk: it waited for the torrent
+  engine, which holds a torrent while its writes to the disk end
+  ([#693](https://github.com/anefzaoui/misterdownloadmanager/issues/693)): the torrents' numbers
+  are now read beside the window; fix in review
 - 🔄 Sites with bot protection (Cloudflare and similar) refusing MDM: when a site still answers
   with a bot check, asking again the way a browser connects
   ([#668](https://github.com/anefzaoui/misterdownloadmanager/issues/668))
@@ -589,6 +593,9 @@ These ship in a later version, when they're ready.
   post's own link on other sites), else the video's own file, else it says to open the post; fix
   in review, checked on a signed-in LinkedIn feed and Facebook's video page; Facebook's feed
   posts still to check
+- 🔄 Torrents: a pause landing while a piece was being checked leaving the torrent one piece short
+  until MDM restarted ([#706](https://github.com/anefzaoui/misterdownloadmanager/issues/706)): the
+  piece is now downloaded again after the pause; fix in review
 - 🔄 Torrents: magnet links without trackers finding no peers where the DHT's first nodes didn't
   answer ([#650](https://github.com/anefzaoui/misterdownloadmanager/issues/650)): four public
   routers asked together, the ones that never answer left alone once one has, the IPv6 nodes kept
