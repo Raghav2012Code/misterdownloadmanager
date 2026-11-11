@@ -249,6 +249,31 @@
     return { sure, maybe };
   }
 
+  // LinkedIn's comment tools' key: base64url of a protobuf naming the post (field 1 its
+  // activity, field 2 its ugcPost), whose one field is the id as a zigzag varint. [kind, id] or
+  // null.
+  function commentToolsUrn(key) {
+    try {
+      const bytes = [...atob(key.replace(/-/g, "+").replace(/_/g, "/"))].map((c) => c.charCodeAt(0));
+      const kind = { 10: "activity", 18: "ugcPost" }[bytes[0]];
+      if (!kind || bytes[1] !== bytes.length - 2 || bytes[2] !== 8) return null;
+      let n = 0n;
+      let shift = 0n;
+      for (let i = 3; i < bytes.length; i += 1) {
+        n |= BigInt(bytes[i] & 0x7f) << shift;
+        shift += 7n;
+        if (!(bytes[i] & 0x80)) {
+          if (i !== bytes.length - 1 || n & 1n) return null;
+          const id = String(n >> 1n);
+          return /^\d{15,20}$/.test(id) ? [kind, id] : null;
+        }
+      }
+    } catch {
+      // Not such a key.
+    }
+    return null;
+  }
+
   // The big sites with feeds: what names a post in their pages, the address yt-dlp reads it by
   // (its extractors' own address shapes), and their pages that are one video's own.
   const SITES = [
@@ -257,26 +282,38 @@
       // LinkedIn extractor reads /feed/update/urn:li:activity:<id>/ (and /posts/…); a post known
       // only by its ugcPost URN goes as /feed/update/urn:li:ugcPost:<id>/, the same public page,
       // where yt-dlp's generic reader finds the video.
+      //
+      // LinkedIn's feed since 2026 (its server-driven app: role="listitem" posts in a
+      // data-testid="mainFeed" list) names a post nowhere near its video, only in the keys of
+      // the post's parts (componentkey): its comments' URNs (urn:li:comment:(activity:<id>,…)),
+      // its text's translation key (…userGeneratedContentId=<id>…, its ugcPost), and its comment
+      // tools' key, <base64>-replaceableCommentTools, a protobuf of the post's URN (field 1 its
+      // activity, field 2 its ugcPost, the id zigzag-encoded). Checked against a signed-in feed:
+      // each decodes to the post its comments name, and each ugcPost's page plays the video.
       hosts: /^linkedin\.com$/,
       embed: (u) => /^\/embed\//.test(u.pathname),
       read(node) {
         const sure = new Map();
         const maybe = new Map();
+        const post = (kind, id) =>
+          (kind === "activity" ? sure : maybe).set(`${kind}:${id}`, `https://www.linkedin.com/feed/update/urn:li:${kind}:${id}/`);
         const add = (s) => {
-          for (const m of String(s || "").matchAll(/urn:li:(activity|ugcPost|share):(\d{6,})/g)) {
-            (m[1] === "activity" ? sure : maybe).set(`${m[1]}:${m[2]}`, `https://www.linkedin.com/feed/update/urn:li:${m[1]}:${m[2]}/`);
-          }
+          s = String(s || "");
+          for (const m of s.matchAll(/urn:li:(?:comment:\()?(activity|ugcPost|share):(\d{6,})/g)) post(m[1], m[2]);
+          for (const m of s.matchAll(/\b(userGeneratedContent|share|activity)Id=(\d{6,})/g)) post(m[1] === "userGeneratedContent" ? "ugcPost" : m[1], m[2]);
           // A post's public address: /posts/<who>_<words>-activity-<id>-<four>.
-          const p = /\/posts\/[^/?#]*-(activity|ugcPost)-(\d{6,})-\w{4}/.exec(String(s || ""));
-          if (p) (p[1] === "activity" ? sure : maybe).set(`${p[1]}:${p[2]}`, `https://www.linkedin.com/feed/update/urn:li:${p[1]}:${p[2]}/`);
-        };
-        const attrs = (el) => {
-          for (const a of ["data-urn", "data-id", "data-activity-urn", "data-entity-urn"]) add(el.getAttribute?.(a));
+          const p = /\/posts\/[^/?#]*-(activity|ugcPost)-(\d{6,})-\w{4}/.exec(s);
+          if (p) post(p[1], p[2]);
+          const k = /^([\w-]{12,40})-replaceableCommentTools/.exec(s);
+          const urn = k && commentToolsUrn(k[1]);
+          if (urn) post(urn[0], urn[1]);
         };
         // The container's own attributes, whatever their names (the page renames them), and its
         // insides' known ones.
         for (const a of node.attributes || []) add(a.value);
-        for (const el of node.querySelectorAll?.("[data-urn], [data-id], [data-activity-urn], [data-entity-urn]") || []) attrs(el);
+        for (const el of node.querySelectorAll?.("[data-urn], [data-id], [data-activity-urn], [data-entity-urn], [componentkey]") || []) {
+          for (const a of ["data-urn", "data-id", "data-activity-urn", "data-entity-urn", "componentkey"]) add(el.getAttribute?.(a));
+        }
         for (const { u } of linksIn(node)) if (/linkedin\.com$/.test(u.hostname)) add(decoded(u.pathname));
         return { sure, maybe };
       },

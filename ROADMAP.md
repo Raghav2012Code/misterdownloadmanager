@@ -587,7 +587,8 @@ These ship in a later version, when they're ready.
   [#643](https://github.com/anefzaoui/misterdownloadmanager/issues/643)): it now sends the post the
   video sits in (LinkedIn, Facebook, X, Instagram, Reddit, TikTok, Vimeo, Dailymotion, and a
   post's own link on other sites), else the video's own file, else it says to open the post; fix
-  in review, still to check on LinkedIn and Facebook signed in
+  in review, checked on a signed-in LinkedIn feed and Facebook's video page; Facebook's feed
+  posts still to check
 - 🔄 Torrents: magnet links without trackers finding no peers where the DHT's first nodes didn't
   answer ([#650](https://github.com/anefzaoui/misterdownloadmanager/issues/650)): four public
   routers asked together, the ones that never answer left alone once one has, the IPv6 nodes kept
