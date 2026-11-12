@@ -556,6 +556,7 @@ Bug fixes from the first days of 0.5.0, a Safari extension, and more file types.
 
 These ship in the next version.
 
+- ✅ The browser extension's popup has **Hide the download button in full screen**, off as installed: a page in full screen shows no **Download video** button, for watching without it in the way ([#670](https://github.com/anefzaoui/misterdownloadmanager/issues/670))
 - ✅ No freeze of the window on **Tasks → Import** of a large file, or of one that isn't a list
   (a video, an archive, another program's backup): it is read beside the window, the status strip
   says "Reading …", a file over 64 MB is refused with a message, and Link grabber takes 10,000
