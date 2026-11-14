@@ -15,7 +15,7 @@ How Mister Download Manager's pieces fit together.
 | `crates/ipc` | `mdm-ipc` | The single-instance channel (a token-protected local socket), the data folder, and the capture rules shared by the app and the host |
 | `crates/debrid` | `mdm-debrid` | Debrid accounts (#44): the services' official APIs (Real-Debrid, AllDebrid, Premiumize, TorBox, Mega-Debrid) turn a file host's link into a direct one the engine downloads |
 | `crates/cnl` | `mdm-cnl` | Click'n'Load 2 (#37): the listener on 127.0.0.1:9666 that reads a link site's posts into packages for Link grabber, with limits on what it takes |
-| `crates/extract` | `mdm-extract` | Archive extraction (#37): zip, tar, gz and xz in process; 7z and RAR through an installed 7-Zip, run as its own program |
+| `crates/extract` | `mdm-extract` | Archive extraction (#37): zip, tar, gz and xz in process; 7z and RAR through an installed 7-Zip, run as its own program; in place through HatchZip when asked |
 | `crates/geo` | `mdm-geo` | Where a download's server is (#140): an IP-to-country range table built from DB-IP's Lite data (`tools/geo/build.py`), looked up on this computer only, and the countries' flags |
 | `crates/tools` | `mdm-tools` | Video pages through yt-dlp and ffmpeg, image galleries through gallery-dl (run as separate programs); while a network adapter is chosen, their connections go through a proxy of MDM's on 127.0.0.1 that binds them to it (`relay.rs`); each runs in a folder it can write, also its TEMP (`workdir.rs`) |
 | `crates/crash` | `mdm-crash` | Crash and freeze reports: the monitor process, out-of-process minidumps, symbolicated stacks, the report's text and the release logs ([crash-reports.md](crash-reports.md)) |
@@ -50,10 +50,12 @@ place; the file's date can follow the server's.
 
 A download's first request (`get`) follows redirects and the pages that lead on to a file by
 themselves (a waiting page's refresh). Sites whose links aren't the file's address have a module
-in `sites/` (Google Drive: `sites/gdrive.rs`): it turns the link into the file's address, reads
-the site's own pages (a confirmation form, an error page) and names its refusals
-(`Error::Refused`), with pure functions tested without a network. The lab server plays such a
-site on its real host names for the end-to-end tests (`labserver/src/drive.rs`).
+in `sites/` (Google Drive: `sites/gdrive.rs`; MediaFire: `sites/mediafire.rs`): it turns the link
+into the file's address, reads the site's own pages (a confirmation form, a download button, an
+error page), names its refusals (`Error::Refused`) and, where the file's addresses expire, the
+page that gives a fresh one (`sites::origin`, asked again when a connection meets an expired
+address), with pure functions tested without a network. The lab server plays such a site on its
+real host names for the end-to-end tests (`labserver/src/drive.rs`, `labserver/src/mediafire.rs`).
 
 FTP and FTPS (`ftp.rs`) go through the same planner, workers and state: a segment is `REST` +
 `RETR` on a control session instead of a ranged `GET`, `SIZE` and `MDTM` stand in for the
