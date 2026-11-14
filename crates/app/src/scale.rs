@@ -506,11 +506,23 @@ mod tests {
     /// A bar only where the content is larger; one bar's room can make the other needed.
     #[test]
     fn scroll_bars_only_where_needed() {
-        assert_eq!(bars(vec2(430.0, 506.0), vec2(430.0, 506.0), 1.0), (false, false));
-        assert_eq!(bars(vec2(430.0, 506.0), vec2(600.0, 400.0), 1.0), (true, false));
-        assert_eq!(bars(vec2(760.0, 300.0), vec2(700.0, 400.0), 1.0), (false, true));
+        assert_eq!(
+            bars(vec2(430.0, 506.0), vec2(430.0, 506.0), 1.0),
+            (false, false)
+        );
+        assert_eq!(
+            bars(vec2(430.0, 506.0), vec2(600.0, 400.0), 1.0),
+            (true, false)
+        );
+        assert_eq!(
+            bars(vec2(760.0, 300.0), vec2(700.0, 400.0), 1.0),
+            (false, true)
+        );
         // Only taller, but the vertical bar leaves too little width.
-        assert_eq!(bars(vec2(440.0, 506.0), vec2(450.0, 400.0), 1.0), (true, true));
+        assert_eq!(
+            bars(vec2(440.0, 506.0), vec2(450.0, 400.0), 1.0),
+            (true, true)
+        );
     }
 
     /// The focused control brought into view: below the port scrolls down, above scrolls up,
@@ -534,8 +546,14 @@ mod tests {
     /// put both bars up here.
     #[test]
     fn a_pixel_rounded_off_needs_no_bar() {
-        assert_eq!(bars(vec2(650.0, 500.0), vec2(649.0, 500.0), 1.0), (false, false));
-        assert_eq!(bars(vec2(650.0, 500.0), vec2(650.0, 499.0), 1.0), (false, false));
+        assert_eq!(
+            bars(vec2(650.0, 500.0), vec2(649.0, 500.0), 1.0),
+            (false, false)
+        );
+        assert_eq!(
+            bars(vec2(650.0, 500.0), vec2(650.0, 499.0), 1.0),
+            (false, false)
+        );
     }
 
     /// #672 at 125 %, where a device pixel is 0.8 points: the 649 px client of a 650 px
@@ -557,11 +575,20 @@ mod tests {
     #[test]
     fn content_left_out_needs_its_bar() {
         // Two pixels wider, well short of the height: the horizontal bar only.
-        assert_eq!(bars(vec2(651.0, 480.0), vec2(649.0, 500.0), 1.0), (false, true));
+        assert_eq!(
+            bars(vec2(651.0, 480.0), vec2(649.0, 500.0), 1.0),
+            (false, true)
+        );
         // Two pixels taller, 20 narrower than the view: the vertical bar only.
-        assert_eq!(bars(vec2(630.0, 502.0), vec2(650.0, 500.0), 1.0), (true, false));
+        assert_eq!(
+            bars(vec2(630.0, 502.0), vec2(650.0, 500.0), 1.0),
+            (true, false)
+        );
         // Filling the width and two pixels wider: the horizontal bar's 17 px also leave it too
         // tall, so both, as Win32 decides them.
-        assert_eq!(bars(vec2(651.0, 500.0), vec2(649.0, 500.0), 1.0), (true, true));
+        assert_eq!(
+            bars(vec2(651.0, 500.0), vec2(649.0, 500.0), 1.0),
+            (true, true)
+        );
     }
 }
