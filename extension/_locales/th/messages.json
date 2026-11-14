@@ -327,9 +327,9 @@
     "message": "ต้นฉบับ"
   },
   "popup_video_hide_fullscreen": {
-    "message": "Hide the download button in full screen"
+    "message": "ซ่อนปุ่มดาวน์โหลดเมื่อเต็มหน้าจอ"
   },
   "popup_video_hide_fullscreen_title": {
-    "message": "While the page is in full screen, its videos show no Download video button"
+    "message": "ขณะที่หน้าเว็บแสดงผลแบบเต็มหน้าจอ วิดีโอจะไม่แสดงปุ่มดาวน์โหลดวิดีโอ"
   }
 }

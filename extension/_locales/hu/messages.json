@@ -327,9 +327,9 @@
     "message": "eredeti"
   },
   "popup_video_hide_fullscreen": {
-    "message": "Hide the download button in full screen"
+    "message": "A letöltés gomb elrejtése teljes képernyős módban"
   },
   "popup_video_hide_fullscreen_title": {
-    "message": "While the page is in full screen, its videos show no Download video button"
+    "message": "Amíg az oldal teljes képernyős módban van, a videókon nem jelenik meg a Letöltés videó gomb"
   }
 }

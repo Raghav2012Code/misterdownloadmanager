@@ -327,9 +327,9 @@
     "message": "ഒറിജിനൽ"
   },
   "popup_video_hide_fullscreen": {
-    "message": "Hide the download button in full screen"
+    "message": "ഫുൾ സ്ക്രീനിൽ ഡൗൺലോഡ് ബട്ടൺ മറയ്ക്കുക"
   },
   "popup_video_hide_fullscreen_title": {
-    "message": "While the page is in full screen, its videos show no Download video button"
+    "message": "പേജ് ഫുൾ സ്ക്രീനിൽ ആയിരിക്കുമ്പോൾ, അതിലെ വീഡിയോകളിൽ ഡൗൺലോഡ് വീഡിയോ ബട്ടൺ കാണിക്കില്ല"
   }
 }

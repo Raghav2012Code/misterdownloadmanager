@@ -327,9 +327,9 @@
     "message": "оригинал"
   },
   "popup_video_hide_fullscreen": {
-    "message": "Hide the download button in full screen"
+    "message": "Скрывать кнопку загрузки в полноэкранном режиме"
   },
   "popup_video_hide_fullscreen_title": {
-    "message": "While the page is in full screen, its videos show no Download video button"
+    "message": "Пока страница находится в полноэкранном режиме, её видео не показывают кнопку «Загрузить видео»"
   }
 }

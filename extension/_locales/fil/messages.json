@@ -327,9 +327,9 @@
     "message": "orihinal"
   },
   "popup_video_hide_fullscreen": {
-    "message": "Hide the download button in full screen"
+    "message": "Itago ang download button sa full screen"
   },
   "popup_video_hide_fullscreen_title": {
-    "message": "While the page is in full screen, its videos show no Download video button"
+    "message": "Habang nasa full screen ang page, walang Download video button na ipinapakita ang mga video nito"
   }
 }

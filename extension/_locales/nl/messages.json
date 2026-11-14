@@ -327,9 +327,9 @@
     "message": "origineel"
   },
   "popup_video_hide_fullscreen": {
-    "message": "Hide the download button in full screen"
+    "message": "Downloadknop verbergen in volledig scherm"
   },
   "popup_video_hide_fullscreen_title": {
-    "message": "While the page is in full screen, its videos show no Download video button"
+    "message": "Terwijl de pagina in volledig scherm is, tonen de video's geen downloadknop"
   }
 }

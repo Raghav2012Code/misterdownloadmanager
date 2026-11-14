@@ -327,9 +327,9 @@
     "message": "original"
   },
   "popup_video_hide_fullscreen": {
-    "message": "Hide the download button in full screen"
+    "message": "Ascundeți butonul de descărcare în modul ecran complet"
   },
   "popup_video_hide_fullscreen_title": {
-    "message": "While the page is in full screen, its videos show no Download video button"
+    "message": "În timp ce pagina este în modul ecran complet, videoclipurile sale nu afișează butonul Descărcați videoclipul"
   }
 }

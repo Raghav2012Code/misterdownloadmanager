@@ -327,9 +327,9 @@
     "message": "izvorno"
   },
   "popup_video_hide_fullscreen": {
-    "message": "Hide the download button in full screen"
+    "message": "Sakrij gumb za preuzimanje u načinu cijelog zaslona"
   },
   "popup_video_hide_fullscreen_title": {
-    "message": "While the page is in full screen, its videos show no Download video button"
+    "message": "Dok je stranica u načinu cijelog zaslona, njezini videozapisi ne prikazuju gumb Preuzmi videozapis"
   }
 }

@@ -327,9 +327,9 @@
     "message": "originale"
   },
   "popup_video_hide_fullscreen": {
-    "message": "Hide the download button in full screen"
+    "message": "Nascondi il pulsante di download a schermo intero"
   },
   "popup_video_hide_fullscreen_title": {
-    "message": "While the page is in full screen, its videos show no Download video button"
+    "message": "Quando la pagina è a schermo intero, i suoi video non mostrano il pulsante Scarica video"
   }
 }

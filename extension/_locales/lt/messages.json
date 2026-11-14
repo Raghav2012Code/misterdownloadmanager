@@ -327,9 +327,9 @@
     "message": "originalas"
   },
   "popup_video_hide_fullscreen": {
-    "message": "Hide the download button in full screen"
+    "message": "Slėpti atsisiuntimo mygtuką viso ekrano režimu"
   },
   "popup_video_hide_fullscreen_title": {
-    "message": "While the page is in full screen, its videos show no Download video button"
+    "message": "Kai puslapis yra viso ekrano režimu, jo vaizdo įrašuose nerodomas mygtukas „Atsisiųsti vaizdo įrašą“"
   }
 }

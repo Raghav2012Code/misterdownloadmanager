@@ -327,9 +327,9 @@
     "message": "original"
   },
   "popup_video_hide_fullscreen": {
-    "message": "Hide the download button in full screen"
+    "message": "Skjul nedlastingsknappen i fullskjerm"
   },
   "popup_video_hide_fullscreen_title": {
-    "message": "While the page is in full screen, its videos show no Download video button"
+    "message": "Mens siden er i fullskjerm, viser videoene ingen nedlastingsknapp"
   }
 }

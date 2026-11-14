@@ -327,9 +327,9 @@
     "message": "オリジナル"
   },
   "popup_video_hide_fullscreen": {
-    "message": "Hide the download button in full screen"
+    "message": "全画面表示時にダウンロード ボタンを非表示にする"
   },
   "popup_video_hide_fullscreen_title": {
-    "message": "While the page is in full screen, its videos show no Download video button"
+    "message": "ページが全画面表示されている間、動画にダウンロード ボタンは表示されません"
   }
 }

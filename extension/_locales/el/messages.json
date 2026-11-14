@@ -327,9 +327,9 @@
     "message": "πρωτότυπο"
   },
   "popup_video_hide_fullscreen": {
-    "message": "Hide the download button in full screen"
+    "message": "Απόκρυψη του κουμπιού λήψης σε πλήρη οθόνη"
   },
   "popup_video_hide_fullscreen_title": {
-    "message": "While the page is in full screen, its videos show no Download video button"
+    "message": "Όταν η σελίδα είναι σε πλήρη οθόνη, τα βίντεό της δεν εμφανίζουν το κουμπί «Λήψη βίντεο»"
   }
 }

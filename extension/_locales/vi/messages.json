@@ -327,9 +327,9 @@
     "message": "gốc"
   },
   "popup_video_hide_fullscreen": {
-    "message": "Hide the download button in full screen"
+    "message": "Ẩn nút tải xuống ở chế độ toàn màn hình"
   },
   "popup_video_hide_fullscreen_title": {
-    "message": "While the page is in full screen, its videos show no Download video button"
+    "message": "Khi trang ở chế độ toàn màn hình, video của trang sẽ không hiển thị nút Tải xuống video"
   }
 }

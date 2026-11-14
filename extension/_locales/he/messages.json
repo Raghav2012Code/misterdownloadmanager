@@ -327,9 +327,9 @@
     "message": "מקורית"
   },
   "popup_video_hide_fullscreen": {
-    "message": "Hide the download button in full screen"
+    "message": "הסתרת לחצן ההורדה במסך מלא"
   },
   "popup_video_hide_fullscreen_title": {
-    "message": "While the page is in full screen, its videos show no Download video button"
+    "message": "כאשר הדף במסך מלא, הסרטונים שלו לא מציגים את לחצן ״הורד סרטון״"
   }
 }

@@ -327,9 +327,9 @@
     "message": "alkuperäinen"
   },
   "popup_video_hide_fullscreen": {
-    "message": "Hide the download button in full screen"
+    "message": "Piilota latauspainike koko näytön tilassa"
   },
   "popup_video_hide_fullscreen_title": {
-    "message": "While the page is in full screen, its videos show no Download video button"
+    "message": "Kun sivu on koko näytön tilassa, sen videoissa ei näy Lataa video -painiketta"
   }
 }

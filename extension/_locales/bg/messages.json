@@ -327,9 +327,9 @@
     "message": "оригинал"
   },
   "popup_video_hide_fullscreen": {
-    "message": "Hide the download button in full screen"
+    "message": "Скриване на бутона за изтегляне в режим на цял екран"
   },
   "popup_video_hide_fullscreen_title": {
-    "message": "While the page is in full screen, its videos show no Download video button"
+    "message": "Докато страницата е на цял екран, нейните видеоклипове не показват бутон за изтегляне на видео"
   }
 }

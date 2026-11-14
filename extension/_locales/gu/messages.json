@@ -327,9 +327,9 @@
     "message": "મૂળ"
   },
   "popup_video_hide_fullscreen": {
-    "message": "Hide the download button in full screen"
+    "message": "પૂર્ણ સ્ક્રીનમાં ડાઉનલોડ બટન છુપાવો"
   },
   "popup_video_hide_fullscreen_title": {
-    "message": "While the page is in full screen, its videos show no Download video button"
+    "message": "જ્યારે પૃષ્ઠ પૂર્ણ સ્ક્રીનમાં હોય, ત્યારે તેના વીડિયો પર કોઈ “વીડિયો ડાઉનલોડ કરો” બટન દેખાશે નહીં"
   }
 }
