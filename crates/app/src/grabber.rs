@@ -1007,7 +1007,7 @@ impl Grabber {
                                 LinkState::Failed { full, .. } => full.as_str(),
                                 _ => state.as_str(),
                             };
-                            look.name = [l.name.as_str(), &size, &state]
+                            look.name = [l.name.as_str(), &size, state_full]
                                 .iter()
                                 .filter(|s| !s.is_empty())
                                 .copied()
@@ -1312,18 +1312,35 @@ pub fn state_of(e: &mdm_engine::Error) -> LinkState {
             404 | 410 => LinkState::Offline(s.as_u16()),
             401 | 403 => LinkState::NeedsLogin,
             429 | 503 => LinkState::Busy,
-            _ => failed(e),
+            _ => failed(e, None),
         },
         mdm_engine::Error::Throttled(..) => LinkState::Busy,
-        _ => failed(e),
+        // i18n: Link grabber, a link's status: the remedy from the failure's sentence, for a site whose bot check lets only browsers through. The sentence, with the same advice, is the cell's hover tip
+        mdm_engine::Error::BotCheck => failed(e, Some(crate::i18n::t("Alt+click the link"))),
+        mdm_engine::Error::Refused(mdm_engine::Refusal::NeedsBrowser { .. }) => {
+            // i18n: Link grabber, a link's status: the remedy from the failure's sentence, for a site link that is a web page, not the file (and a server that sent a web page instead of it). The sentence is the cell's hover tip
+            failed(e, Some(crate::i18n::t("Open in browser")))
+        }
+        // i18n: Link grabber, a link's status: the remedy from the failure's sentence, for a server that sent a web page instead of the file. The sentence is the cell's hover tip
+        mdm_engine::Error::GotWebPage => failed(e, Some(crate::i18n::t("Open in browser"))),
+        // i18n: Link grabber, a link's status: the remedy from the failure's sentence, for a download link that expired. The sentence is the cell's hover tip
+        mdm_engine::Error::LinkExpired => failed(e, Some(crate::i18n::t("Refresh the address"))),
+        mdm_engine::Error::ChecksumMismatch(_) => {
+            // i18n: Link grabber, a link's status: the remedy from the failure's sentence, for a file whose checksum didn't match. The sentence is the cell's hover tip
+            failed(e, Some(crate::i18n::t("Download it again")))
+        }
+        // i18n: Link grabber, a link's status: a server that can't send parts of a file, so the download can't resume; there is nothing to do here. The sentence is the cell's hover tip
+        mdm_engine::Error::NoRanges => failed(e, Some(crate::i18n::t("Can't resume"))),
+        _ => failed(e, None),
     }
 }
 
-/// A failure as a link's status: what the row says, and the whole sentence for its hover tip.
-fn failed(e: &mdm_engine::Error) -> LinkState {
+/// A failure as a link's status: the words the row shows (`short` when the sentence's remedy
+/// fits a narrow column, else the sentence), and the whole sentence for the cell's hover tip.
+fn failed(e: &mdm_engine::Error, short: Option<&str>) -> LinkState {
     let full = crate::errors::describe(e);
     LinkState::Failed {
-        short: full.clone(),
+        short: short.map_or_else(|| full.clone(), str::to_owned),
         full,
     }
 }
@@ -1923,5 +1940,40 @@ mod tests {
                 ms(answers),
             );
         }
+    }
+
+    /// #1110: the Status column names the remedy in words that fit, and keeps the whole
+    /// sentence, remedy included, as the cell's hover tip.
+    #[test]
+    fn a_failure_says_its_remedy_and_keeps_its_sentence() {
+        let cases = [
+            (mdm_engine::Error::BotCheck, "Alt+click the link"),
+            (
+                mdm_engine::Error::Refused(mdm_engine::Refusal::NeedsBrowser {
+                    site: "gofile".into(),
+                }),
+                "Open in browser",
+            ),
+            (mdm_engine::Error::GotWebPage, "Open in browser"),
+            (mdm_engine::Error::LinkExpired, "Refresh the address"),
+            (
+                mdm_engine::Error::ChecksumMismatch("SHA-256"),
+                "Download it again",
+            ),
+            (mdm_engine::Error::NoRanges, "Can't resume"),
+        ];
+        for (e, remedy) in cases {
+            let LinkState::Failed { short, full } = state_of(&e) else {
+                panic!("{e:?} is not a failure");
+            };
+            assert_eq!(short, remedy, "{e:?}");
+            assert_eq!(full, crate::errors::describe(&e), "{e:?}");
+            assert!(short.len() < full.len(), "{e:?}: {short} / {full}");
+        }
+        // A failure that offers no remedy keeps the sentence it had, cut as before.
+        let LinkState::Failed { short, full } = state_of(&mdm_engine::Error::ShortBody) else {
+            panic!("ShortBody is not a failure");
+        };
+        assert_eq!(short, full);
     }
 }
