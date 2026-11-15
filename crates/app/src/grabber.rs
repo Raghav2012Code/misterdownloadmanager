@@ -46,8 +46,11 @@ pub enum LinkState {
     NeedsLogin,
     /// The server asked to wait (429, 503).
     Busy,
-    /// Anything else, in the interface language.
-    Failed(String),
+    /// Anything else: what the row says, and the whole sentence, which the cell shows on hover.
+    Failed {
+        short: String,
+        full: String,
+    },
 }
 
 /// Which package a link goes in: a split archive's volumes together, else the links of one page,
@@ -1000,6 +1003,10 @@ impl Grabber {
                             } else {
                                 state_text(&l.state)
                             };
+                            let state_full = match &l.state {
+                                LinkState::Failed { full, .. } => full.as_str(),
+                                _ => state.as_str(),
+                            };
                             look.name = [l.name.as_str(), &size, &state]
                                 .iter()
                                 .filter(|s| !s.is_empty())
@@ -1041,16 +1048,19 @@ impl Grabber {
                             } else {
                                 match l.state {
                                     LinkState::Online => winui::SUCCESS(),
-                                    LinkState::Offline(_) | LinkState::Failed(_) => winui::ERROR(),
+                                    LinkState::Offline(_) | LinkState::Failed { .. } => {
+                                        winui::ERROR()
+                                    }
                                     _ => winui::MUTED(),
                                 }
                             };
-                            winui::fit(
+                            winui::fit_whole(
                                 ui,
                                 clip,
                                 state_x,
                                 top + 13.0,
                                 &state,
+                                state_full,
                                 ink,
                                 row.right() - 6.0,
                                 ("grabber-state", i),
@@ -1291,7 +1301,7 @@ fn state_text(s: &LinkState) -> String {
         LinkState::NeedsLogin => crate::i18n::t("Needs a login").to_owned(),
         // i18n: Link grabber, a link's status: the server asked to try later (429, 503)
         LinkState::Busy => crate::i18n::t("Busy, try later").to_owned(),
-        LinkState::Failed(why) => why.clone(),
+        LinkState::Failed { short, .. } => short.clone(),
     }
 }
 
@@ -1302,10 +1312,19 @@ pub fn state_of(e: &mdm_engine::Error) -> LinkState {
             404 | 410 => LinkState::Offline(s.as_u16()),
             401 | 403 => LinkState::NeedsLogin,
             429 | 503 => LinkState::Busy,
-            _ => LinkState::Failed(crate::errors::describe(e)),
+            _ => failed(e),
         },
         mdm_engine::Error::Throttled(..) => LinkState::Busy,
-        _ => LinkState::Failed(crate::errors::describe(e)),
+        _ => failed(e),
+    }
+}
+
+/// A failure as a link's status: what the row says, and the whole sentence for its hover tip.
+fn failed(e: &mdm_engine::Error) -> LinkState {
+    let full = crate::errors::describe(e);
+    LinkState::Failed {
+        short: full.clone(),
+        full,
     }
 }
 
