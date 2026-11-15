@@ -574,6 +574,9 @@ These ship in the next version.
   the computer: as after a wake, a stall then is the computer's (logged, and reported only if it
   lasts past the first three minutes)
   (for [#1126](https://github.com/anefzaoui/misterdownloadmanager/issues/1126))
+- ✅ Link grabber's **Status** column: a failure whose sentence ends in advice shows that advice
+  in the column, with the whole sentence on hover, and the column is as wide as its longest answer
+  ([#1110](https://github.com/anefzaoui/misterdownloadmanager/issues/1110))
 - ✅ A malformed stream playlist no longer stops the video downloader: that download fails and
   says why ([#1141](https://github.com/anefzaoui/misterdownloadmanager/issues/1141))
 - ✅ A queue (or a download) set to **Exit Mister Download Manager when done** quits MDM, as File →
