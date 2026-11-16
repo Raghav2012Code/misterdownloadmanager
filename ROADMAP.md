@@ -562,6 +562,10 @@ Bug fixes from the first days of 0.5.0, a Safari extension, and more file types.
 
 These ship in the next version.
 
+- ✅ With **Start immediately** on, picking the folder the early download already saves to in
+  **Save As** keeps its name: the download's own `.mdm.part` and `.mdm.json` no longer count as
+  taken, so it isn't offered as `song (1).mp3` and doesn't start over
+  ([#597](https://github.com/anefzaoui/misterdownloadmanager/issues/597))
 - ✅ **Options → General → Download panels → Edit... → Button size**: **Full**, as before, or
   **Compact**, the round Download video button (the logo, the arrow and ✕) over every video
   ([#1278](https://github.com/anefzaoui/misterdownloadmanager/issues/1278))
