@@ -566,6 +566,9 @@ These ship in the next version.
   **Save As** keeps its name: the download's own `.mdm.part` and `.mdm.json` no longer count as
   taken, so it isn't offered as `song (1).mp3` and doesn't start over
   ([#597](https://github.com/anefzaoui/misterdownloadmanager/issues/597))
+- ✅ The crash crate's tests build on 32-bit Windows again: the alternate-stack test uses a
+  top a 32-bit `usize` can hold, with that crash's own address kept in its comment, so CI's
+  `windows-x86` job is green again
 - ✅ **Options → General → Download panels → Edit... → Button size**: **Full**, as before, or
   **Compact**, the round Download video button (the logo, the arrow and ✕) over every video
   ([#1278](https://github.com/anefzaoui/misterdownloadmanager/issues/1278))
@@ -1162,6 +1165,10 @@ These ship in the next version.
 - ✅ Sites that let only browsers through (Cloudflare's bot check, FileHippo's 412): MDM tries once
   more connecting the way a browser does, with the cookies it has for that site (part of
   [#668](https://github.com/anefzaoui/misterdownloadmanager/issues/668))
+- ✅ Downloads through the browser-like connection use all their connections, each asking for its
+  part, and fall back to one when a site refuses parts there; a stream's pieces behind a bot check
+  are asked that way too ([#668](https://github.com/anefzaoui/misterdownloadmanager/issues/668),
+  [#1289](https://github.com/anefzaoui/misterdownloadmanager/issues/1289))
 - ✅ Downloads from FileHippo no longer fail at once with 412 Precondition Failed: a link the site
   refuses goes on from where the browser's own download of it had reached, then through the
   browser-like connection above
@@ -1358,10 +1365,15 @@ These ship in the next version.
 - ✅ The command line starts and stops a queue of the running app: `start-queue` and
   `stop-queue`, the main download queue unless one is named (thanks to
   [@abdul-karim-mia](https://github.com/abdul-karim-mia))
+- ✅ The command line adds downloads to the running app: `add <url>`, with folder, file name, category, queue and silent flags (thanks to
+- ✅ AI assistants (MCP) can choose a download queue and a category when adding downloads, and start or stop a queue by name (thanks to
+  [@abdul-karim-mia](https://github.com/abdul-karim-mia))
 - ✅ Linux (X11): Minimize to the notification area takes the window out of the taskbar's window
   list, as closing it does ([#1255](https://github.com/anefzaoui/misterdownloadmanager/issues/1255))
 - ✅ A failed download says why in MDM's log too, with the site's name and no tokens
   ([#1262](https://github.com/anefzaoui/misterdownloadmanager/issues/1262))
+- ✅ Download panels: the hint under the sites list has its own row instead of running under
+  Export...
 
 ## Being worked on
 
