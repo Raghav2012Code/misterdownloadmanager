@@ -1419,6 +1419,11 @@ These ship in the next version.
   [@RedemptionMHA](https://github.com/RedemptionMHA))
 - ✅ Linux: the notification area's icon has its name (KDE showed none)
   ([#1305](https://github.com/anefzaoui/misterdownloadmanager/issues/1305))
+- ✅ About's links include **Contributors**, which opens the website's page that thanks everyone who
+  sent a pull request, opened an issue or joined a conversation (built from GitHub at every build,
+  so it never goes stale): the smaller form of
+  [#1253](https://github.com/anefzaoui/misterdownloadmanager/pull/1253), whose author
+  [@9M2PJU](https://github.com/9M2PJU) handed it over
 
 ## Being worked on
 
