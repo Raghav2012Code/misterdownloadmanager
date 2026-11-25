@@ -572,6 +572,10 @@ These ship in the next version.
 - ✅ The browser add-on finds all the images on a page when asked (**This page → Find images**),
   at the largest size listed, filtered by size and type, and sends them to Link grabber
   ([#1781](https://github.com/anefzaoui/misterdownloadmanager/issues/1781))
+- ✅ Extension: Sinhala (සිංහල), from the translation the catalogs already held (the one text
+  they lacked is translated too): the add-on's locale folder was never written; Firefox shows
+  it, Chrome has no Sinhala and skips it
+  ([#1903](https://github.com/anefzaoui/misterdownloadmanager/issues/1903))
 - ✅ The browser add-on's video button before the video plays: on a site yt-dlp doesn't read, it
   looks up the stream address the page wrote for its player (master playlist first, else the best
   quality named), only addresses the page names, on a page with one video
