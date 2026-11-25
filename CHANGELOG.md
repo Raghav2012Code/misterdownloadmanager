@@ -109,6 +109,7 @@ Each release's notes on GitHub come from its section here (`## [X.Y.Z]`, see
 
 ### Fixed
 
+- Options: longer translations stay inside their page. The notes at the bottom of **Remote**, **Save to** and **Sites Logins** wrap and, where they would run past it, end with “…” (the whole note on hover) instead of drawing over the buttons, and **Archives**' HatchZip check box ends inside its group box instead of at the window's edge ([#1845](https://github.com/anefzaoui/misterdownloadmanager/issues/1845)).
 - Torrents: a magnet link whose hash is written in lower-case Base32 (32 letters and digits, as some sites write it) opens, instead of being refused as not a torrent (thanks to [@jamaica1000](https://github.com/jamaica1000)).
 - Helpers: ffmpeg's download is checked more carefully.
 - Torrents: the engine checks what it's sent more carefully.
