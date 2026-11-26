@@ -18,8 +18,8 @@ LOCALES = ROOT / "extension" / "_locales"
 
 # Our language codes (i18n/languages.tsv) → the locale folders the browsers read. Chrome skips a
 # folder it doesn't know (Chromium's extension_l10n_util::GetValidLocales) and Firefox reads the
-# same names, so si (Firefox's Sinhala) ships even though Chrome has no Sinhala. The others show
-# English.
+# same names, so si (Firefox's Sinhala) ships even though Chrome has no Sinhala; pack.ps1 leaves it
+# out of the other packages (the stores check a package's locales). The others show English.
 CHROME = {
     "am": "am", "ar": "ar", "bg": "bg", "bn": "bn", "ca": "ca", "cs": "cs", "da": "da",
     "de": "de", "el": "el", "es": "es", "es-mx": "es_419", "et": "et", "fa": "fa", "fi": "fi",
