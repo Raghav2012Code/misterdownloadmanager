@@ -4523,6 +4523,19 @@ impl App {
         })
     }
 
+    /// A download that starts opens its progress window, as Options → Downloads → Customize
+    /// "Download progress" dialog says (#1041), minimized when it says so (#1966).
+    fn progress_window(&mut self, id: u64) {
+        if self.progress.iter().any(|p| p.id == id) {
+            return;
+        }
+        let mut p = Progress::new(id, self.settings.show_complete);
+        if self.settings.show_progress_minimized {
+            p.start_minimized();
+        }
+        self.progress.push(p);
+    }
+
     /// Start or resume a download; `show` opens its progress dialog (IDM's default), unless
     /// Options → Downloads → Customize "Download progress" dialog turned it off (#1041).
     fn start(&mut self, id: u64, show: bool) {
@@ -4714,9 +4727,8 @@ impl App {
         item.error = None;
         item.last_try = Some(model::now_stamp());
         self.dirty = true;
-        if show && !self.progress.iter().any(|p| p.id == id) {
-            self.progress
-                .push(Progress::new(id, self.settings.show_complete));
+        if show {
+            self.progress_window(id);
         }
     }
 
@@ -6901,9 +6913,8 @@ impl App {
             self.started_with.insert(id, tool.version.clone());
         }
         self.dirty = true;
-        if show && !self.progress.iter().any(|p| p.id == id) {
-            self.progress
-                .push(Progress::new(id, self.settings.show_complete));
+        if show {
+            self.progress_window(id);
         }
     }
 
@@ -7014,9 +7025,8 @@ impl App {
             self.started_with.insert(id, tool.version.clone());
         }
         self.dirty = true;
-        if show && !self.progress.iter().any(|p| p.id == id) {
-            self.progress
-                .push(Progress::new(id, self.settings.show_complete));
+        if show {
+            self.progress_window(id);
         }
     }
 
@@ -7295,9 +7305,8 @@ impl App {
         item.error = None;
         item.last_try = Some(model::now_stamp());
         self.dirty = true;
-        if show && !self.progress.iter().any(|p| p.id == id) {
-            self.progress
-                .push(Progress::new(id, self.settings.show_complete));
+        if show {
+            self.progress_window(id);
         }
     }
 
@@ -7351,9 +7360,8 @@ impl App {
         item.error = None;
         item.last_try = Some(model::now_stamp());
         self.dirty = true;
-        if show && !self.progress.iter().any(|p| p.id == id) {
-            self.progress
-                .push(Progress::new(id, self.settings.show_complete));
+        if show {
+            self.progress_window(id);
         }
     }
     /// Add torrent → Download Now / Later. Through the debrid account when torrents go there
@@ -7607,9 +7615,8 @@ impl App {
         item.error = None;
         item.last_try = Some(model::now_stamp());
         self.dirty = true;
-        if show && !self.progress.iter().any(|p| p.id == id) {
-            self.progress
-                .push(Progress::new(id, self.settings.show_complete));
+        if show {
+            self.progress_window(id);
         }
     }
 
