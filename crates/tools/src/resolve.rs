@@ -613,6 +613,13 @@ pub fn sound_only(selector: &str, ext: &str) -> bool {
     original_sound(selector) || audio_conversion(selector).is_some() || audio_container(ext)
 }
 
+/// A file type that can hold the video's own picture as its cover, put in by ffmpeg without
+/// encoding the sound again (#1962): MP3's APIC, and M4A's and FLAC's attached picture. Not an
+/// Ogg file (Opus: ffmpeg writes no picture block into one, trac #4448), nor a WebM.
+pub fn coverable(ext: &str) -> bool {
+    matches!(ext.to_ascii_lowercase().as_str(), "mp3" | "m4a" | "flac")
+}
+
 /// A choice whose file can hold subtitles put into it (yt-dlp's `--embed-subs` with SRT).
 pub fn holds_subtitles(c: &Choice) -> bool {
     matches!(
@@ -2016,6 +2023,22 @@ mod tests {
         ] {
             assert_eq!(mp3_quality(other), None, "{other}");
         }
+    }
+
+    #[test]
+    fn cover_pictures_go_into_four_kinds_of_file() {
+        // #1962: the kinds ffmpeg can put a picture into without encoding the sound again, by
+        // the type the file is saved as; an Ogg (Opus) and a WebM can't hold one.
+        for ext in ["mp3", "m4a", "flac", "MP3", "M4A", "FLAC"] {
+            assert!(coverable(ext), "{ext}");
+        }
+        for ext in ["opus", "ogg", "oga", "webm", "wav", "aac", "mp4", ""] {
+            assert!(!coverable(ext), "{ext}");
+        }
+        // A sound is the only thing with a picture to show.
+        assert!(sound_only("mp3:320", "mp3"));
+        assert!(sound_only("ba", "m4a"));
+        assert!(!sound_only("b", "mp4"));
     }
 
     #[test]

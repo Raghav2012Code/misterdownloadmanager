@@ -607,6 +607,7 @@ mod tests {
                     chapter_files: Vec::new(),
                     duration: None,
                     part: None,
+                    cover: false,
                 });
                 i
             })

@@ -1088,6 +1088,10 @@ pub struct VideoSpec {
     /// list saved before parts).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub part: Option<mdm_tools::part::Part>,
+    /// The video's thumbnail as the file's cover (#1962): ticked in Download video, for a sound
+    /// that can hold one; false in a list saved before it.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub cover: bool,
 }
 
 /// A running download and its speed measurement.
@@ -2539,6 +2543,7 @@ mod file_address_tests {
             chapter_files: Vec::new(),
             duration: None,
             part: None,
+            cover: false,
         });
         i
     }
@@ -2805,6 +2810,7 @@ mod tests {
             chapter_files: Vec::new(),
             duration: None,
             part: None,
+            cover: false,
         });
         it
     }

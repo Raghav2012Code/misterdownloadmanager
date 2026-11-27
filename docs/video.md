@@ -171,6 +171,18 @@ With **Split into chapters** ticked (beside **Embed chapters**, or under it in a
 - The command line's `video-get` and `playlist-get` support it via `--split-chapters`.
 - Deleting the download along with its files cleans up its split chapter files too, while preserving unrelated files in the same folder.
 
+## The video's thumbnail as the cover
+
+A sound saved from a video has no picture, so music players show an empty cover. Tick **The video's thumbnail as the cover**, under **Chapters**, and the picture the site gives for that video goes into the file as its cover picture.
+
+- It's ticked to begin with, and stays as you leave it for the next video.
+- It works for an MP3, M4A or FLAC: the sound is copied as it is, never encoded again, so the file sounds exactly as it would without the picture. An Opus or WebM sound can't hold a cover picture, and the box says so, greyed.
+- It needs ffmpeg, which writes the picture in. Without it the box is greyed and the file is saved as before.
+- The picture is the one the site gives for that video; nothing is fetched from anywhere else. A video it gives none for is saved without a cover, and the download's log says so.
+- Videos are unchanged: only a sound takes a cover picture.
+- The picture goes in once the download is done, before the file is called finished: its name, its size and its length stay as they were. When ffmpeg can't put it in (a disk that won't take the copy, a file another program holds open), the sound is kept as it was and the download's log says why.
+- A playlist's videos take it too, each its own video's picture.
+
 ## Download only a part {#part}
 
 To save only a stretch of a video or of a sound (a scene, a song from a long mix, a few minutes of a podcast), tick **Only a part** on the **Part** row, under **Subtitles**, and type where it starts and where it ends.

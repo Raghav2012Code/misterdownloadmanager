@@ -569,6 +569,12 @@ Bug fixes from the first days of 0.5.0, a Safari extension, and more file types.
 
 These ship in the next version.
 
+- ✅ **Download video**: the video's own thumbnail goes into an **Audio only** MP3, M4A or FLAC
+  as the sound's cover picture, the sound copied and never encoded again; a video's file is
+  unchanged, an Opus or WebM sound can't hold one (said, greyed), and without ffmpeg nothing
+  changes ([#1962](https://github.com/anefzaoui/misterdownloadmanager/issues/1962); from
+  [discussion #1726](https://github.com/anefzaoui/misterdownloadmanager/discussions/1726),
+  thanks to [@twistedwolfyt00](https://github.com/twistedwolfyt00))
 - ✅ Windows: closing a dialog of the main window's with **OK**, after bringing it back with
   MDM's taskbar button, leaves the main window in front with the keyboard instead of the
   taskbar ([#1852](https://github.com/anefzaoui/misterdownloadmanager/issues/1852); thanks to

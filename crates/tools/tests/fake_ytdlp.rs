@@ -53,6 +53,7 @@ fn main() -> ExitCode {
         saved_checks(&me);
         live_checks(&me);
         part_checks(&me);
+        cover_checks(&me);
         println!("fake_ytdlp: ok");
         return ExitCode::SUCCESS;
     }
@@ -303,6 +304,17 @@ fn fake_ytdlp() -> ExitCode {
     let template = after("-o").expect("-o");
     let dir = Path::new(&template).parent().expect("a folder").to_owned();
     let mode = mode(&dir);
+    // The video's thumbnail, when asked for (#1962), under the name its own `-o` template gives:
+    // `no-thumbnail` mode, a page that has none.
+    let write_thumbnail = || {
+        if !has("--write-thumbnail") || mode == "no-thumbnail" {
+            return;
+        }
+        if let Some(name) = args.iter().find_map(|a| a.strip_prefix("thumbnail:")) {
+            let file = name.replace("%(ext)s", "jpg").replace("%%", "%");
+            std::fs::write(file, b"FAKEJPEG the picture").unwrap();
+        }
+    };
     // The page it was given to download from, kept for the checks to read.
     if let Some(info) = after("--load-info-json") {
         let _ = std::fs::copy(info, dir.join("loaded.txt"));
@@ -694,14 +706,25 @@ fn fake_ytdlp() -> ExitCode {
         } else if let Err(failed) = python_write(&output, &merged) {
             return failed;
         }
+        write_thumbnail();
         println!("MDMF {output}");
         return ExitCode::SUCCESS;
     }
     if !has("--skip-download") {
-        let video = template.replace("%(ext)s", "mp4").replace("%%", "%");
+        // A sound converted by ffmpeg (`-x --audio-format`, as an MP3 choice asks, #32): its own
+        // file, as yt-dlp's ffmpeg extracts it.
+        let video = if has("-x") {
+            template
+                .replace("%(ext)s", &after("--audio-format").unwrap_or("mp3".into()))
+                .replace("%%", "%")
+        } else {
+            template.replace("%(ext)s", "mp4").replace("%%", "%")
+        };
         // #569: YouTube's HLS sound joined without ffmpeg, as yt-dlp leaves it: pieces each led
         // by an ID3 tag, then raw AAC (ADTS) frames, under the format's `.mp4` name.
-        let content = if mode == "hls-audio" {
+        let content = if has("-x") {
+            b"ID3 the sound".to_vec()
+        } else if mode == "hls-audio" {
             let mut piece = b"ID3     ".to_vec();
             piece.extend([0u8; 16]);
             piece.extend([0xff, 0xf1, 0x50, 0x80, 0x2e, 0x7f, 0xfc]);
@@ -710,6 +733,7 @@ fn fake_ytdlp() -> ExitCode {
             vec![0u8; 4096]
         };
         std::fs::write(&video, content).unwrap();
+        write_thumbnail();
         if mode == "odd-lines" {
             // The path in a one-byte code page: every letter beyond ASCII one byte, not UTF-8.
             let mut line = b"MDMF ".to_vec();
@@ -922,6 +946,7 @@ fn part_checks(me: &Path) {
             engine,
             None,
             Some(part),
+            false,
         )
         .expect("started")
     };
@@ -1337,6 +1362,130 @@ fn fake_ffprobe() -> ExitCode {
     ExitCode::SUCCESS
 }
 
+/// #1962: an audio download's own thumbnail put into it as its cover by ffmpeg, without encoding
+/// the sound again: the file the job says is done holds the picture, the picture is gone from the
+/// folder, and ffmpeg was told to copy the sound and attach the picture. When ffmpeg fails or the
+/// page gives no picture, the sound stays as it was and the download's log says why; with the box
+/// unticked, no picture is asked for at all.
+fn cover_checks(me: &Path) {
+    let page = r#"{"id": "talk", "title": "Talk", "ext": "m4a", "duration": 60, "formats": [
+        {"format_id": "140", "ext": "m4a", "protocol": "https", "filesize": 1000,
+         "vcodec": "none", "acodec": "mp4a", "abr": 128, "url": "https://media.example/a.m4a"}]}"#;
+    let run = |mode: &str, cover: bool, ffmpeg_mode: &str| {
+        let tools = tempfile::tempdir().unwrap();
+        let out = tempfile::tempdir().unwrap();
+        std::fs::write(out.path().join("mode.txt"), mode).unwrap();
+        if !ffmpeg_mode.is_empty() {
+            std::fs::write(out.path().join("ffmpeg-mode.txt"), ffmpeg_mode).unwrap();
+        }
+        std::fs::write(tools.path().join("page.json"), page).unwrap();
+        let exe = fake_in(me, tools.path());
+        let ffmpeg = tools
+            .path()
+            .join(format!("fake-ffmpeg{}", std::env::consts::EXE_SUFFIX));
+        std::fs::copy(me, &ffmpeg).unwrap();
+        std::fs::copy(
+            me,
+            tools
+                .path()
+                .join(format!("fake-ffprobe{}", std::env::consts::EXE_SUFFIX)),
+        )
+        .unwrap();
+        let job = VideoJob::start_with(
+            &exe,
+            "https://video.example/talk",
+            "ba",
+            out.path(),
+            "Talk",
+            None,
+            Some(&ffmpeg),
+            None,
+            &Default::default(),
+            &Subs::default(),
+            None,
+            None,
+            None,
+            None,
+            cover,
+        )
+        .expect("started");
+        let end = Instant::now() + Duration::from_secs(120);
+        loop {
+            let p = job.progress();
+            if p.state != State::Running {
+                return (out, p);
+            }
+            assert!(Instant::now() < end, "still running: {:?}", log_of(&p));
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    };
+
+    // The picture in the file, the picture file gone, the sound copied as it was.
+    let (out, p) = run("", true, "");
+    let log = log_of(&p);
+    let State::Done(f) = &p.state else {
+        panic!("{:?}: {log:?}", p.state);
+    };
+    assert_eq!(f.file_name().unwrap(), "Talk.m4a");
+    let text = String::from_utf8_lossy(&std::fs::read(f).unwrap()).into_owned();
+    assert!(
+        text.contains("FAKEJPEG") && text.contains("downloaded by yt-dlp"),
+        "the picture isn't in the sound: {log:?}"
+    );
+    assert!(
+        !out.path().join("Talk.cover.jpg").exists(),
+        "the picture stays"
+    );
+    assert!(
+        log.iter()
+            .any(|l| l.contains("thumbnail is the sound's cover")),
+        "{log:?}"
+    );
+    let args = std::fs::read_to_string(out.path().join("ffmpeg-args.txt")).unwrap();
+    assert!(
+        args.contains("-disposition:v\nattached_pic") && args.contains("\n-f\nipod"),
+        "{args:?}"
+    );
+    assert!(
+        !args.contains("-id3v2_version"),
+        "an MP3's tag on an M4A: {args:?}"
+    );
+
+    // ffmpeg failing: the sound as it was, and why said in the log.
+    let (out, p) = run("", true, "fail");
+    let log = log_of(&p);
+    let State::Done(f) = &p.state else {
+        panic!("{:?}: {log:?}", p.state);
+    };
+    assert_eq!(std::fs::read(f).unwrap(), b"downloaded by yt-dlp");
+    assert!(!out.path().join("Talk.cover.jpg").exists());
+    assert!(
+        log.iter()
+            .any(|l| l.contains("couldn't be put in as the cover")),
+        "{log:?}"
+    );
+
+    // A page with no picture: the sound as it was, and the log saying so.
+    let (_out, p) = run("no-thumbnail", true, "");
+    let log = log_of(&p);
+    assert!(matches!(p.state, State::Done(_)), "{:?}: {log:?}", p.state);
+    assert!(
+        log.iter().any(|l| l.contains("gave no thumbnail")),
+        "{log:?}"
+    );
+
+    // The box unticked: no picture asked for, nothing changed in the file.
+    let (out, p) = run("", false, "");
+    let log = log_of(&p);
+    let State::Done(f) = &p.state else {
+        panic!("{:?}: {log:?}", p.state);
+    };
+    assert_eq!(std::fs::read(f).unwrap(), b"downloaded by yt-dlp");
+    assert!(!out.path().join("Talk.cover.jpg").exists());
+    assert!(!log.iter().any(|l| l.contains("cover")), "{log:?}");
+    println!("fake_ytdlp: the cover checks ok");
+}
+
 /// MDM's ffmpeg making a live stream's recording an MP4 (`-i file:<.part> [-i file:<.part>…] …
 /// file:<out>`): the recordings copied one after the other after [`MARK`], taking a second. Its
 /// runs counted in `ffmpeg-runs.txt` beside the (first) recording; `ffmpeg-mode.txt` there:
@@ -1362,6 +1511,8 @@ fn fake_ffmpeg() -> ExitCode {
     let input = inputs.first().expect("-i").clone();
     let output = file(args.last().expect("an output"));
     let dir = input.parent().expect("a folder").to_owned();
+    // What it was told, an argument a line, for the checks (#1962's cover among them).
+    let _ = std::fs::write(dir.join("ffmpeg-args.txt"), args.join("\n"));
     let runs = dir.join("ffmpeg-runs.txt");
     let n = std::fs::read_to_string(&runs)
         .ok()
@@ -1710,6 +1861,7 @@ fn saved_checks(me: &Path) {
         None,
         Some(hook),
         None,
+        false,
     )
     .expect("started");
     let end = Instant::now() + Duration::from_secs(120);
@@ -1939,6 +2091,7 @@ fn preloaded_checks(me: &Path) {
             None,
             None,
             None,
+            false,
         )
         .expect("started");
         let end = Instant::now() + Duration::from_secs(120);

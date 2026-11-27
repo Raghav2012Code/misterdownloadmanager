@@ -499,6 +499,7 @@ pub fn video_add(
     music: Option<&Path>,
     start_now: bool,
     pref: &Subs,
+    cover: bool,
 ) -> Option<VideoAdd> {
     let page = url::Url::parse(&p.address)
         .ok()
@@ -528,6 +529,7 @@ pub fn video_add(
         named: false,
         duration: crate::videodlg::whole_seconds(p.video.duration),
         part: None,
+        cover,
     })
 }
 
@@ -1325,7 +1327,7 @@ mod tests {
         answered(&job, STREAM);
         let p = l.pick(&pick(&job.token, 0, None), false, now).unwrap();
         drop(job);
-        let add = video_add(p, &folder, None, true, &de).unwrap();
+        let add = video_add(p, &folder, None, true, &de, false).unwrap();
         assert_eq!(add.page.as_str(), SRC);
         assert_eq!(
             add.selector, "hls-2500/b[height=720][vcodec^=avc1]/b[height=720]",
@@ -1363,7 +1365,7 @@ mod tests {
             langs: vec!["ja".into()],
             ..Default::default()
         };
-        let add = video_add(p, &folder, None, false, &ja).unwrap();
+        let add = video_add(p, &folder, None, false, &ja, false).unwrap();
         assert_eq!(add.dest, folder.join("master.mp4"));
         assert_eq!(
             add.selector,
@@ -1387,7 +1389,7 @@ mod tests {
         );
         let p = l.pick(&pick(&job.token, 0, None), false, now).unwrap();
         drop(job);
-        let add = video_add(p, &folder, None, true, &Subs::default()).unwrap();
+        let add = video_add(p, &folder, None, true, &Subs::default(), false).unwrap();
         assert_eq!(add.dest, folder.join("Its own title.mp4"));
         // Never an address that isn't on the web.
         let job = l
@@ -1400,7 +1402,7 @@ mod tests {
             .unwrap();
         answered(&job, STREAM);
         let p = l.pick(&pick(&job.token, 0, None), false, now).unwrap();
-        assert!(video_add(p, &folder, None, true, &Subs::default()).is_none());
+        assert!(video_add(p, &folder, None, true, &Subs::default(), false).is_none());
     }
 
     /// What the browser's menu is told of each choice (#755, #801): the height, frame rate,

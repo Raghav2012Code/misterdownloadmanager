@@ -52,6 +52,9 @@ pub struct VideoAdd {
     pub duration: Option<u32>,
     /// Only this part of it (#1662); none for the whole video.
     pub part: Option<mdm_tools::part::Part>,
+    /// The video's thumbnail as the file's cover (#1962): for a sound that can hold one, with
+    /// ffmpeg.
+    pub cover: bool,
 }
 
 /// A looked-up length (`resolve::Video::duration`, seconds) as a video download keeps it: whole
@@ -140,6 +143,8 @@ pub struct VideoDialog {
     /// Split into chapters has a row of its own under Embed chapters (its caption doesn't fit
     /// beside it in this language): measured as the row is drawn.
     split_wraps: bool,
+    /// The video's thumbnail as the sound's cover (#1962; settings.video_cover).
+    cover: bool,
     /// The last video's choice (settings.video_subs), applied to each video looked up.
     pref: Subs,
     /// The clipboard's page address, read off the window's thread (#661).
@@ -162,9 +167,13 @@ pub struct VideoDialog {
 const PART_ROWS: f32 = 52.0;
 
 /// The top of the window's bottom row of buttons (Helpers..., Download Now, Later, Cancel),
-/// under Embed chapters (and Split into chapters, when it has a row of its own:
-/// [`VideoDialog::split_row`]).
-const BUTTONS_Y: f32 = 389.0 + PART_ROWS;
+/// under Embed chapters (Split into chapters's row, when it has one of its own:
+/// [`VideoDialog::split_row`], and The thumbnail as the cover's).
+const BUTTONS_Y: f32 = 389.0 + PART_ROWS + COVER_ROW;
+
+/// The row The thumbnail as the cover (#1962) takes under the chapters, always: the window grows
+/// by it and the buttons go a row lower.
+const COVER_ROW: f32 = 19.0;
 
 /// The row Split into chapters takes under Embed chapters when the two captions don't fit
 /// side by side in the interface's language: the window grows by it.
@@ -240,6 +249,7 @@ impl VideoDialog {
             chapters: true,
             split_chapters: false,
             split_wraps: false,
+            cover: true,
             pref: Subs::default(),
             clip: Default::default(),
             part_on: false,
@@ -260,6 +270,12 @@ impl VideoDialog {
     /// Split into chapters ticked or not (settings.video_split_chapters).
     pub fn with_split_chapters(mut self, on: bool) -> Self {
         self.split_chapters = on;
+        self
+    }
+
+    /// The thumbnail as the cover ticked or not (settings.video_cover, #1962).
+    pub fn with_cover(mut self, on: bool) -> Self {
+        self.cover = on;
         self
     }
 
@@ -515,7 +531,7 @@ impl VideoDialog {
             self.confirmed = Some(now);
             ctx.request_repaint();
         }
-        let height = 422.0 + PART_ROWS + self.split_row();
+        let height = 422.0 + PART_ROWS + COVER_ROW + self.split_row();
         let out = window(
             ctx,
             "video-page",
@@ -559,6 +575,7 @@ impl VideoDialog {
                 start_now,
                 &self.context(),
                 self.category(),
+                self.cover,
             ))));
         }
         let (Some((_, choices)), Ok(page)) = (&self.video, url::Url::parse(self.page.trim()))
@@ -610,6 +627,7 @@ impl VideoDialog {
             named,
             duration: whole_seconds(duration),
             part,
+            cover: self.cover,
         })))
     }
 
@@ -1155,6 +1173,7 @@ impl VideoDialog {
         };
         label(ui, 359.0, labels[3], part_shade);
         self.chapters_row(ui, o, bx, ffmpeg.is_some());
+        self.cover_row(ui, o, bx, ffmpeg.is_some());
 
         // The choices belong to the address looked up: an edited address is looked up first
         // (it downloaded the new page with the old one's format and name).
@@ -1168,7 +1187,8 @@ impl VideoDialog {
                     && !self.name.trim().is_empty()
             }
         };
-        // Under Embed chapters, and under Split into chapters when it has a row of its own.
+        // Under Embed chapters (Split into chapters's row when it has one, and The thumbnail as
+        // the cover's).
         let buttons_y = BUTTONS_Y + self.split_row();
         // A part whose times can't be (#1662): said on Download Now.
         let part_problem = self.part().err();
@@ -1362,6 +1382,59 @@ impl VideoDialog {
         if self.split_wraps { SPLIT_ROW } else { 0.0 }
     }
 
+    /// The video's thumbnail as the sound's cover (#1962), under the chapters: the site's own
+    /// picture goes into a downloaded sound as its cover picture, the sound copied and not
+    /// encoded again (an MP3, M4A or FLAC), once it is done; kept for the next video as it is
+    /// left. Greyed without ffmpeg, for a choice with a picture, and for a file type that can't
+    /// hold a cover picture (Opus, WebM).
+    fn cover_row(&mut self, ui: &mut Ui, o: Pos2, bx: f32, ffmpeg: bool) {
+        let (sound, holds) = match &self.list {
+            Some(list) => (list.sound_only(), mdm_tools::resolve::coverable(list.ext())),
+            None => match self.video.as_ref().and_then(|(_, c)| c.get(self.chosen)) {
+                Some(c) => (
+                    mdm_tools::resolve::is_audio(c),
+                    mdm_tools::resolve::coverable(&c.ext),
+                ),
+                None => (false, false),
+            },
+        };
+        let can = ffmpeg && sound && holds;
+        let mut on = self.cover && can;
+        let resp = winui::checkbox_until(
+            ui,
+            pos2(
+                o.x + bx,
+                o.y + 350.0 + PART_ROWS + COVER_ROW + self.split_row(),
+            ),
+            &mut on,
+            // i18n: checkbox in Download video: the video's own picture (the site's thumbnail) goes into a downloaded sound as its cover picture
+            "The video's thumbnail as the cover",
+            can,
+            Some(o.x + 489.0),
+        );
+        let resp = winui::why_disabled(
+            resp,
+            !ffmpeg,
+            // i18n: why "Embed chapters" is greyed: ffmpeg (a helper program) is not installed
+            "This needs ffmpeg",
+        );
+        let resp = winui::why_disabled(
+            resp,
+            ffmpeg && !sound,
+            // i18n: why "The video's thumbnail as the cover" is greyed in Download video: only a downloaded sound can take a cover picture, not a video
+            "Only a sound takes a cover picture",
+        );
+        winui::why_disabled(
+            resp,
+            ffmpeg && sound && !holds,
+            // i18n: why "The video's thumbnail as the cover" is greyed in Download video: a sound of this file type (Opus, WebM) cannot hold a cover picture
+            "This file type can't hold a cover picture",
+        );
+        if can {
+            self.cover = on;
+        }
+    }
+
     /// Part (#1662), under Subtitles: only from one time to another of the video or the sound.
     /// Ticked, From and To take the times (`1:30`, `1:02:03`; the video's length the bound, the
     /// whole video at first), and the cut is quick (at the keyframes, the streams copied: it may
@@ -1544,10 +1617,14 @@ impl VideoDialog {
     pub fn chapters(&self) -> bool {
         self.chapters
     }
-
     /// Split into chapters' tick, for the settings (`video_split_chapters`).
     pub fn split_chapters(&self) -> bool {
         self.split_chapters
+    }
+
+    /// The thumbnail as the cover's tick, for the settings (`video_cover`).
+    pub fn cover(&self) -> bool {
+        self.cover
     }
 
     /// Subtitles (#68): a language the video has, from the uploader or the site's automatic
@@ -2131,6 +2208,7 @@ mod tests {
                 chapter_files: vec![],
                 duration: None,
                 part: None,
+                cover: false,
             });
             item.private_window = private;
             item.context.private = private;
@@ -2908,5 +2986,25 @@ mod tests {
         assert_eq!(d.chosen, 1);
         assert_eq!(choices[1].label, "Most compatible (H.264 + AAC) · 1080p");
         assert!(choices[1].selector.starts_with("299+140/"));
+    }
+
+    /// #1962: the thumbnail as the cover is the download's as the box says, for a sound and for
+    /// a video alike (the download keeps it only for a file that can hold a picture), and the
+    /// box's tick is what the settings keep.
+    #[test]
+    fn the_thumbnail_as_the_cover_is_added_with_the_download() {
+        let add = |d: &VideoDialog| match d.added() {
+            Some(VideoOut::One(add)) => add,
+            _ => panic!("a video is added"),
+        };
+        let mut d = looked_up(true).with_cover(true);
+        let (sound, film) = rows(&d);
+        choose(&mut d, sound);
+        assert!(add(&d).cover, "a sound's, the box ticked");
+        choose(&mut d, film);
+        assert!(add(&d).cover, "the tick stays as it was");
+        let d = d.with_cover(false);
+        assert!(!add(&d).cover);
+        assert!(!d.cover(), "what the settings keep");
     }
 }

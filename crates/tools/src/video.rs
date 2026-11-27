@@ -594,13 +594,17 @@ const MEDIA: [&str; 19] = [
 const SUBTITLES: [&str; 10] = [
     "srt", "vtt", "ass", "ssa", "ttml", "srv1", "srv2", "srv3", "json3", "lrc",
 ];
+/// The picture files a video's thumbnail comes in, saved beside the sound for its cover (#1962;
+/// yt-dlp's `--convert-thumbnails jpg` makes the first).
+const PICTURES: [&str; 4] = ["jpg", "jpeg", "png", "webp"];
 
 /// Whether `rest`, a file name after `<stem>.` (lower case), is one yt-dlp writes for a download
 /// saved as `<stem>.%(ext)s`: an unfinished run's (`<ext>.part`, `<ext>.ytdl`,
 /// `<ext>.part-Frag<N>[.part]`, each also for one stream of a merged choice as `f<id>.<ext>…`,
 /// that stream once whole, `f<id>.<ext>`, and a merge's `temp.<ext>`; MDM's engine's part file
 /// and resume state for such a stream, `f<id>.<ext>.mdm.part` and `.mdm.json`, #769); with
-/// `outputs`, also the finished file (`<ext>`) and its subtitles (`<language>.<srt|vtt…>`).
+/// `outputs`, also the finished file (`<ext>`), its subtitles (`<language>.<srt|vtt…>`) and its
+/// cover's picture (`cover.<jpg|jpeg|png|webp>`, #1962).
 /// Nothing else: another download's files (MDM's own `.mdm.part`), a file merely named alike.
 fn yt_dlp_leftover(rest: &str, outputs: bool) -> bool {
     let media = |s: &str| MEDIA.contains(&s);
@@ -637,11 +641,15 @@ fn yt_dlp_leftover(rest: &str, outputs: bool) -> bool {
         [f, ext] if format(f) => media(ext),
         [f, ext, "mdm", "part" | "json"] if format(f) => media(ext),
         [f, tail @ ..] if format(f) => unfinished(tail),
+        // The thumbnail yt-dlp is fetching for the cover (#1962).
+        ["cover", image, "part"] => PICTURES.contains(image),
         p => unfinished(p),
     };
     let finished = outputs
         && match parts.as_slice() {
             [ext] => media(ext),
+            // The picture put in as the cover, or left beside it (#1962).
+            ["cover", image] => PICTURES.contains(image),
             [language, sub] => word(language) && SUBTITLES.contains(sub),
             _ => false,
         };
@@ -696,6 +704,9 @@ struct Recorder {
     /// MDM's ffmpeg, which makes the recording an MP4; without it the recording is kept as the
     /// MPEG-TS it is.
     ffmpeg: Option<PathBuf>,
+    /// The video's thumbnail goes into the sound as its cover once it is done (#1962): yt-dlp
+    /// saved it beside it, MDM's ffmpeg puts it in.
+    cover: bool,
 }
 
 impl Recorder {
@@ -1532,6 +1543,22 @@ fn live_args(ours: &[String]) -> (Vec<String>, bool) {
                 args.next();
             }
             "--embed-chapters" => {}
+            // The cover (#1962): a recording is kept as it is.
+            "--write-thumbnail" => {}
+            "--convert-thumbnails" => {
+                args.next();
+            }
+            "-o" => {
+                if args
+                    .clone()
+                    .next()
+                    .is_some_and(|v| v.starts_with("thumbnail:"))
+                {
+                    args.next();
+                } else {
+                    out.push(a.clone());
+                }
+            }
             "--embed-subs" => {
                 beside = true;
                 if !writes {
@@ -1938,14 +1965,14 @@ fn supervise(
                     Some(run) => finished_live(run, f, quality.as_deref(), recorder, progress),
                     None => f,
                 };
-                done(progress, saved, f, problems, chapter_files);
+                done(progress, saved, f, problems, chapter_files, recorder);
                 return;
             }
             Attempt::Save(said) => {
                 // Every process of yt-dlp's ended first: until then its ffmpeg holds the file.
                 end(child);
                 match finish_recording(&ours, said, recorder.ffmpeg.as_deref(), progress) {
-                    Saved::Done(f) => done(progress, saved, f, Vec::new(), Vec::new()),
+                    Saved::Done(f) => done(progress, saved, f, Vec::new(), Vec::new(), recorder),
                     Saved::Stopped => {
                         let mut p = progress.lock().unwrap();
                         p.speed = 0.0;
@@ -2063,9 +2090,15 @@ fn done(
     f: PathBuf,
     problems: Vec<SubProblem>,
     chapter_files: Vec<PathBuf>,
+    recorder: &Recorder,
 ) {
     // Named for what it holds (#569): HLS pieces joined without ffmpeg.
     let f = named_for_content(f);
+    // The video's own thumbnail into the sound as its cover, before the file is marked and said
+    // done: the mark isn't kept by the file ffmpeg makes (#1962).
+    if recorder.cover {
+        cover_into(progress, recorder, &f);
+    }
     // The saved file's own size: a merged video or a converted MP3 isn't the size of what came
     // down.
     let size = std::fs::metadata(&f).ok().map(|m| m.len());
@@ -2089,6 +2122,145 @@ fn done(
         }
         p.state = State::Done(f);
     }
+}
+
+/// The video's own thumbnail, yt-dlp's `<stem>.cover.jpg` beside `f`, put into `f` as its cover
+/// (#1962): an MP3, M4A or FLAC, with ffmpeg, the sound copied rather than encoded again. The log
+/// says when there was no picture, or when it couldn't be put in and the sound is saved as it
+/// was; a stopped download, a file type that can't hold one (Opus, WebM) and no ffmpeg change
+/// nothing, the window having asked for it only where it can.
+fn cover_into(progress: &Mutex<Progress>, recorder: &Recorder, f: &Path) {
+    let Some(ffmpeg) = recorder.ffmpeg.as_deref() else {
+        return;
+    };
+    let ext = f
+        .extension()
+        .map(|e| e.to_string_lossy().to_ascii_lowercase())
+        .unwrap_or_default();
+    if !crate::resolve::coverable(&ext) {
+        return;
+    }
+    let (Some(dir), Some(stem)) = (
+        f.parent(),
+        f.file_stem().map(|s| s.to_string_lossy().into_owned()),
+    ) else {
+        return;
+    };
+    let picture = PICTURES
+        .iter()
+        .map(|e| dir.join(format!("{stem}.cover.{e}")))
+        .find(|p| p.is_file());
+    let Some(picture) = picture else {
+        note(
+            progress,
+            "The page gave no thumbnail: the sound is saved without a cover".into(),
+        );
+        return;
+    };
+    // Being saved meanwhile: a Stop now takes nothing from the file, and nothing is said done
+    // before the cover is in.
+    {
+        let mut p = progress.lock().unwrap();
+        if p.state == State::Stopped {
+            let _ = std::fs::remove_file(&picture);
+            return;
+        }
+        recorder.set_finishing(true);
+        p.merging = Some(None);
+    }
+    let made = with_cover(ffmpeg, f, &picture, dir, &stem, &ext);
+    progress.lock().unwrap().merging = None;
+    let _ = std::fs::remove_file(&picture);
+    match made {
+        Ok(()) => note(
+            progress,
+            "The video's thumbnail is the sound's cover".into(),
+        ),
+        Err(why) => note(
+            progress,
+            format!(
+                "The thumbnail couldn't be put in as the cover ({why}); the sound is saved as it was"
+            ),
+        ),
+    }
+}
+
+/// The picture `picture` put into `f`, a sound, as its cover by `ffmpeg` (#1962), copying the
+/// sound (`-c copy`): into `<stem>.temp.<ext>`, which must play as long as `f` did, then renamed
+/// over it — its name, its links and its place kept. Errors say what failed, for the log; `f` is
+/// as it was then.
+fn with_cover(
+    ffmpeg: &Path,
+    f: &Path,
+    picture: &Path,
+    dir: &Path,
+    stem: &str,
+    ext: &str,
+) -> Result<(), String> {
+    let temp = dir.join(format!("{stem}.temp.{ext}"));
+    let before = std::fs::metadata(f).map(|m| m.len()).unwrap_or(0);
+    let mut cmd = crate::proc::program(ffmpeg);
+    cmd.args(["-nostdin", "-y", "-i"]).arg(ff_file(f));
+    cmd.arg("-i").arg(ff_file(picture));
+    // The sound as it is, the picture as the file's front cover, in the container the file's type
+    // names (an M4A's is the `ipod` one).
+    cmd.args([
+        "-map",
+        "0:a",
+        "-map",
+        "1:v",
+        "-c",
+        "copy",
+        "-disposition:v",
+        "attached_pic",
+        "-metadata:s:v",
+        "title=Album cover",
+        "-metadata:s:v",
+        "comment=Cover (front)",
+        "-f",
+        match ext {
+            "m4a" => "ipod",
+            e => e,
+        },
+    ]);
+    if ext == "mp3" {
+        // ID3v2.3, which Windows' own players and iTunes show (their newest tag, v2.4, not).
+        cmd.args(["-id3v2_version", "3"]);
+    }
+    cmd.arg(ff_file(&temp));
+    // A copy runs at the disk's speed: ten minutes, and a second for every 2 MB.
+    let timeout = Duration::from_secs(600 + before / (2 << 20));
+    let made = proc::output(cmd, "ffmpeg", timeout)
+        .map_err(|e| e.to_string())
+        .and_then(|_| {
+            std::fs::metadata(&temp)
+                .map(|m| m.len())
+                .map_err(|_| "ffmpeg made no file".to_owned())
+        })
+        .and_then(|n| {
+            if n <= before {
+                return Err(format!("ffmpeg's file is {n} bytes, the sound {before}"));
+            }
+            // A sound cut short in the file that replaces it would be worse than no cover: with
+            // ffprobe to tell both, the new one plays as long as the old one (a picture adds no
+            // length). Without ffprobe its size alone says it went through.
+            let whole = ffprobe_of(ffmpeg)
+                .and_then(|probe| Some((probed(&probe, &temp)?, probed(&probe, f)?)))
+                .is_none_or(|(made, was)| made.plays + SLACK >= was.plays);
+            if whole {
+                Ok(())
+            } else {
+                Err("the sound came out shorter".into())
+            }
+        })
+        .and_then(|()| {
+            std::fs::rename(&temp, f)
+                .map_err(|e| format!("{} couldn't be replaced ({e})", name_of(f)))
+        });
+    if made.is_err() {
+        let _ = retrying(|| removed(&temp));
+    }
+    made
 }
 
 /// The most the bar shows while yt-dlp still works: all the bytes in is not the end, another
@@ -3597,6 +3769,21 @@ pub fn limit_args(rate: Option<u64>) -> Vec<String> {
         .unwrap_or_default()
 }
 
+/// The video's own thumbnail saved beside the sound as `<stem>.cover.<ext>` (#1962), for ffmpeg
+/// to put in as its cover once the file is done: yt-dlp writes it (as it writes subtitles), in
+/// JPEG whatever the site gave, its own name so no other file of the download's can be taken
+/// for it.
+fn cover_args(dir: &Path, stem: &str) -> Vec<String> {
+    let template = dir.join(format!("{}.cover.%(ext)s", template_text(stem)));
+    vec![
+        "--write-thumbnail".into(),
+        "--convert-thumbnails".into(),
+        "jpg".into(),
+        "-o".into(),
+        format!("thumbnail:{}", template.to_string_lossy()),
+    ]
+}
+
 /// Our progress line: `MDMP <downloaded> <total> <estimate> <speed> <format id>` (`NA` when
 /// unknown; the format id is the stream's, `NA` for a subtitle file).
 const PROGRESS: &str = "download:MDMP %(progress.downloaded_bytes)s %(progress.total_bytes)s %(progress.total_bytes_estimate)s %(progress.speed)s %(info.format_id)s";
@@ -3638,7 +3825,7 @@ impl VideoJob {
     ) -> Result<VideoJob, ProcError> {
         Self::start_with(
             exe, url, selector, dir, stem, rate, ffmpeg, expected, browser, subs, None, engine,
-            None, None,
+            None, None, false,
         )
     }
 
@@ -3648,7 +3835,9 @@ impl VideoJob {
     /// mark that they came from the internet, written before the file is announced, opened or
     /// renamed (a rename keeps the mark), and never on the window's thread. `part`: only that
     /// part of it (#1662, [`crate::part`]), without subtitles or chapters (they'd be the whole
-    /// video's, out of step with the part); it needs `ffmpeg`.
+    /// video's, out of step with the part); it needs `ffmpeg`. `cover`: the video's thumbnail put
+    /// into the sound as its cover once it is done (#1962; [`crate::resolve::coverable`] kinds,
+    /// with `ffmpeg`).
     #[allow(clippy::too_many_arguments)]
     pub fn start_with(
         exe: &Path,
@@ -3665,6 +3854,7 @@ impl VideoJob {
         engine: Option<crate::streams::Engine>,
         saved: Option<mdm_engine::FileHook>,
         part: Option<crate::part::Part>,
+        cover: bool,
     ) -> Result<VideoJob, ProcError> {
         proc::safe(url)?;
         let preloaded = preloaded.filter(|p| p.selector == selector);
@@ -3743,6 +3933,11 @@ impl VideoJob {
             }
             None if part.is_none() => ours.extend(subtitle_args(subs, ffmpeg.is_some())),
             None => {}
+        }
+        // The video's own thumbnail beside the sound, put in as its cover once the file is done
+        // (#1962): yt-dlp fetches it (as it does the subtitles), MDM's ffmpeg puts it in.
+        if cover {
+            ours.extend(cover_args(&folder, stem));
         }
         // A part's chapters would be the whole video's, at the whole's times (yt-dlp doesn't
         // move them): none.
@@ -3844,6 +4039,7 @@ impl VideoJob {
             finishing: std::sync::atomic::AtomicBool::new(false),
             live_finishing: std::sync::atomic::AtomicBool::new(false),
             ffmpeg: ffmpeg.map(Path::to_owned),
+            cover,
         });
         let child: Child = Arc::new(Mutex::new(None));
         let current = Arc::new(crate::streams::Current::new(
@@ -5437,6 +5633,7 @@ mod tests {
             finishing: std::sync::atomic::AtomicBool::new(false),
             live_finishing: std::sync::atomic::AtomicBool::new(false),
             ffmpeg,
+            cover: false,
         }
     }
 

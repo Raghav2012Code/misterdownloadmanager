@@ -2974,6 +2974,9 @@
 #. text in the Download video window
 #. checkbox in Download video: download only a part of the video or sound; the From and To boxes follow it
 	Only a part	Only a part
+#. text in the Download video window
+#. why "The video's thumbnail as the cover" is greyed in Download video: only a downloaded sound can take a cover picture, not a video
+	Only a sound takes a cover picture	Only a sound takes a cover picture
 #. text in the Scheduler window
 #. the Scheduler, under "Wake the computer to run this queue" (Linux): the computer's wake alarm can be set by an administrator only
 	Only an administrator can allow this	Only an administrator can allow this
@@ -4388,6 +4391,9 @@
 #. text in requestedit.rs
 #. Site rule / a download's Connection settings: the User-Agent typed holds a control character
 	The User-Agent has a character a header can't hold	The User-Agent has a character a header can't hold
+#. checkbox in the Download video window
+#. checkbox in Download video: the video's own picture (the site's thumbnail) goes into a downloaded sound as its cover picture
+	The video's thumbnail as the cover	The video's thumbnail as the cover
 #. text in a download's Properties window
 	The web page from which this file was obtained:	The web page from which this file was obtained:
 #. text in errors.rs
@@ -4472,6 +4478,9 @@
 #. text in remote.rs
 #. remote control page (on a phone): the file chosen is too large for a .torrent file
 	This file is too large to be a torrent.	This file is too large to be a torrent.
+#. tooltip (why a control is greyed) in the Download video window
+#. why "The video's thumbnail as the cover" is greyed in Download video: a sound of this file type (Opus, WebM) cannot hold a cover picture
+	This file type can't hold a cover picture	This file type can't hold a cover picture
 #. text in a dialog box
 	This folder does not exist:	This folder does not exist:
 #. message or event log entry in the main window

@@ -3732,6 +3732,15 @@ impl App {
                     }
                 }
             }
+            // Download video's thumbnail as the sound's cover (#1962), on the sample video: the
+            // original M4A picked, so the box is live (with ffmpeg).
+            "video-cover" => {
+                self.run(Cmd::VideoPage, None, ctx);
+                if let Some(v) = &mut self.video_dlg {
+                    v.show_sample();
+                    v.pick("audio only, original m4a");
+                }
+            }
             // A page whose videos need ffmpeg (#351): without it the list has only the sound.
             // `video-adaptive:runtime`: yt-dlp said it had no JavaScript runtime (#852).
             "video-adaptive" => {
@@ -6569,6 +6578,7 @@ impl App {
         .with_subs(self.settings.video_subs.clone())
         .with_chapters(self.settings.video_chapters)
         .with_split_chapters(self.settings.video_split_chapters)
+        .with_cover(self.settings.video_cover)
         .with_music_folder(music)
     }
 
@@ -6612,6 +6622,7 @@ impl App {
                 chapter_files: Vec::new(),
                 duration: add.duration,
                 part: add.part,
+                cover: add.cover,
             });
             // The quality menu's look-up goes with this new download only, started now and while
             // fresh: one queued for later, or added on a duplicate question answered late,
@@ -6689,6 +6700,7 @@ impl App {
                 music.as_deref(),
                 start_now,
                 &self.settings.video_subs,
+                self.settings.video_cover,
             )
         });
         let Some(add) = add else {
@@ -6749,6 +6761,7 @@ impl App {
                     chapter_files: Vec::new(),
                     duration: None,
                     part: None,
+                    cover: add.cover,
                 });
                 item.number_at_start = true;
             }
@@ -6853,6 +6866,17 @@ impl App {
             .preloaded
             .take()
             .filter(|p| p.slot.born().elapsed() < crate::videolookup::TTL);
+        // The video's own thumbnail into the sound as its cover (#1962): a sound of a type that
+        // can hold one, and ffmpeg, which puts it in.
+        let ext = item
+            .dest
+            .extension()
+            .map(|e| e.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        let cover = spec.cover
+            && ffmpeg.is_some()
+            && mdm_tools::resolve::sound_only(&spec.selector, &ext)
+            && mdm_tools::resolve::coverable(&ext);
         let started = mdm_tools::video::VideoJob::start_with(
             &tool.exe,
             item.url.as_str(),
@@ -6868,6 +6892,7 @@ impl App {
             engine,
             Some(mark_hook(&item.url, item.context.referer.as_deref())),
             spec.part,
+            cover,
         );
         match started {
             Ok(job) => {
@@ -14322,6 +14347,11 @@ impl App {
                         crate::settings::share_video_settings(&self.settings);
                         self.dirty = true;
                     }
+                    // The thumbnail as the cover is kept for the next video too (#1962).
+                    if self.settings.video_cover != v.cover() {
+                        self.settings.video_cover = v.cover();
+                        self.dirty = true;
+                    }
                     self.video_dlg = None;
                     match out {
                         crate::videodlg::VideoOut::One(add) => {
@@ -15617,6 +15647,7 @@ mod same_name_tests {
             chapter_files: Vec::new(),
             duration: None,
             part: None,
+            cover: false,
         });
         let items = [row(1, &d.join("Master.webm"), Status::Stopped, 9), video];
         assert_eq!(
@@ -15908,6 +15939,7 @@ mod duplicate_tests {
             named: false,
             duration: None,
             part: None,
+            cover: false,
         }
     }
 
@@ -15958,6 +15990,7 @@ mod duplicate_tests {
             chapter_files: Vec::new(),
             duration: None,
             part: None,
+            cover: false,
         });
         assert!(is_same(&item, &page(), None, None, SELECTOR));
         assert!(!is_same(
@@ -15988,6 +16021,7 @@ mod duplicate_tests {
             chapter_files: Vec::new(),
             duration: None,
             part: None,
+            cover: false,
         });
         item.page = Some(TAB.into());
         let again = stream("https://cdn-7.videos.test/hls/123/master.m3u8?hash=b&expires=2");
@@ -16107,6 +16141,7 @@ mod duplicate_tests {
             chapter_files: Vec::new(),
             duration: Some(754),
             part: None,
+            cover: false,
         });
         item.page = Some(TAB.into());
         let again = stream("z9y8x7");
@@ -16185,6 +16220,7 @@ mod duplicate_tests {
             chapter_files: Vec::new(),
             duration: Some(30),
             part: None,
+            cover: false,
         });
         item.page = Some(FEED.into());
         let likely =
@@ -16356,6 +16392,7 @@ mod duplicate_tests {
             chapter_files: Vec::new(),
             duration: None,
             part: None,
+            cover: false,
         });
         i
     }
@@ -17815,6 +17852,7 @@ mod start_disk_tests {
             chapter_files: Vec::new(),
             duration: None,
             part: None,
+            cover: false,
         });
         let mut app = app_with(vec![
             row(1, dir.path().join("a.bin"), Status::Queued),
@@ -17904,6 +17942,7 @@ mod start_disk_tests {
             named: false,
             duration: None,
             part: None,
+            cover: false,
         }
     }
 
@@ -17931,6 +17970,7 @@ mod start_disk_tests {
             chapter_files: Vec::new(),
             duration: Some(754),
             part: None,
+            cover: false,
         });
         let mut app = app_with(vec![gone]);
         app.settings.duplicate_action = 0;
@@ -18311,6 +18351,7 @@ mod start_disk_tests {
             category: Category::Video,
             start_now: false,
             context: Default::default(),
+            cover: false,
         });
         let names: Vec<&str> = app.items.iter().map(|i| i.file_name.as_str()).collect();
         assert_eq!(names, ["Talk.mp4", "Talk (1).mp4"]);
@@ -19550,6 +19591,7 @@ mod delete_tests {
             chapter_files: vec![chapter_1.clone()],
             duration: None,
             part: None,
+            cover: false,
         });
 
         let mut app = app_from_052(vec![item], false);
@@ -19686,6 +19728,7 @@ mod move_unfinished_tests {
             chapter_files: Vec::new(),
             duration: None,
             part: None,
+            cover: false,
         });
         assert!(
             video

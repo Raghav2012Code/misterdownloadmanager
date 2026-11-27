@@ -34,6 +34,8 @@ pub struct PlaylistAdd {
     pub start_now: bool,
     /// What the browser's request for the page carried, for each look-up.
     pub context: mdm_ipc::Command,
+    /// The video's thumbnail as each sound's cover (#1962), the window's box.
+    pub cover: bool,
 }
 
 /// One of the qualities offered for a whole list (its videos aren't looked up one by one).
@@ -318,6 +320,15 @@ impl PlaylistView {
         picks
             .get(self.pick.min(picks.len().saturating_sub(1)))
             .is_some_and(|p| mdm_tools::resolve::audio_conversion(&p.selector).is_some())
+    }
+
+    /// The file type the quality chosen saves, which the files' names and whether they can take
+    /// a cover picture go by (#1962).
+    pub fn ext(&self) -> &'static str {
+        let picks = picks(true);
+        picks
+            .get(self.pick.min(picks.len().saturating_sub(1)))
+            .map_or("mp4", |p| p.ext)
     }
 
     /// Fewer listed than the site says the list has.
@@ -669,6 +680,7 @@ impl PlaylistView {
         start_now: bool,
         context: &mdm_ipc::Command,
         category: crate::model::Category,
+        cover: bool,
     ) -> PlaylistAdd {
         let picks = picks(merge);
         let pick = &picks[self.pick.min(picks.len() - 1)];
@@ -687,6 +699,7 @@ impl PlaylistView {
             category,
             start_now,
             context: context.clone(),
+            cover,
         }
     }
 }

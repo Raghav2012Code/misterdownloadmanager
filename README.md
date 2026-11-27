@@ -333,7 +333,7 @@ right-to-left window.
   size the page lists, filtered by size and type, and sends them to the Link grabber; the
   right-click menu's **Download all links** brings the page's pictures too, hidden until you ask.
 - **Downloads videos** from web pages (a button appears over the video, on many pages before it plays; playlists,
-  subtitles, the sound alone), **image galleries** with gallery-dl, and **torrents and magnet links**
+  subtitles, the sound alone with the video's picture as its cover), **image galleries** with gallery-dl, and **torrents and magnet links**
   (sequential order, RSS feeds, sharing limits, an optional public tracker list for more peers).
 - **Many links at once**: the Link grabber sorts them into packages and extracts the archives
   (zip, 7z, rar) when they're in. Give it an **FTP folder or a web server's "Index of" page** and it

@@ -60,6 +60,9 @@ newest one.
 - **The sound alone**: **Audio only MP3** at its best variable bitrate or at 320, 256, 192 or
   128 kbps, **Audio only OPUS**, and **Audio only FLAC**, with an honest note that FLAC can't
   add quality the site's sound doesn't have.
+- **The video's picture as the sound's cover**: ticked under the chapters, the site's own
+  thumbnail goes into an MP3, M4A or FLAC as its cover picture, the sound copied and never
+  encoded again. [The help](video.md#the-videos-thumbnail-as-the-cover) says more.
 - **Videos that need you signed in**: the button over the video hands MDM the page's own
   cookies, so you're signed in as in the browser. For pasted links and playlists, **Options →
   Sites Logins → Cookies for video sites** lets yt-dlp read a browser's cookies, from the

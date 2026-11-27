@@ -564,6 +564,10 @@ pub struct Settings {
     /// Download video from a page → Split into chapters: split video into multiple files based on
     /// chapters (with ffmpeg). Off; a settings file from before has none: off.
     pub video_split_chapters: bool,
+    /// Download video from a page → The thumbnail as the cover (#1962): the video's own picture
+    /// goes into an audio file as its cover (with ffmpeg). On; a settings file from before has
+    /// none: on.
+    pub video_cover: bool,
     /// Options → Sites Logins → Cookies for video sites (#229): the browser whose cookies
     /// yt-dlp reads on this computer when the extension passed none (yt-dlp's name: `firefox`,
     /// `chrome`...; empty: off, the default), and its profile (a name or a folder; empty: the
@@ -786,6 +790,7 @@ impl Default for Settings {
             video_subs: Default::default(),
             video_chapters: true,
             video_split_chapters: false,
+            video_cover: true,
             video_cookies: String::new(),
             video_cookies_profile: String::new(),
             ytdlp_config: false,
@@ -2159,6 +2164,14 @@ mod tests {
         let old: Settings = serde_json::from_str(r#"{"video_chapters":true}"#).unwrap();
         assert!(!old.ytdlp_config);
         assert!(!Settings::default().ytdlp_config);
+    }
+
+    /// #1962: a settings file from before the cover has the box ticked, as a new one does.
+    #[test]
+    fn the_thumbnail_as_the_cover_is_on_for_an_older_settings_file() {
+        let old: Settings = serde_json::from_str(r#"{"video_chapters":true}"#).unwrap();
+        assert!(old.video_cover);
+        assert!(Settings::default().video_cover);
     }
 
     /// #1556: the command line gets the app's proxy, DNS, adapter and torrent proxy, as the
